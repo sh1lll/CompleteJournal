@@ -1,103 +1,107 @@
 # Complete Journal
 
-**A trading journal that puts your writing first, and fills in the trades for you.**
+A trading journal built around what you write, with your trades filled in automatically.
 
-Most trading journals are spreadsheets of fills with a notes box bolted on.
-Complete Journal works the other way round. It is a place to write down what
-you planned, what you saw and what you learned. Your trades are pulled in
-automatically and linked to that writing, so you can look back months later
-and see what you were thinking alongside what actually happened.
+Most trading journals are spreadsheets of fills with a notes box added on.
+Complete Journal starts from the writing: what you planned, what you saw and
+what you learned. Your trades are pulled in automatically and linked to those
+notes, so months later you can read what you were thinking next to what
+actually happened.
 
-It runs on your own computer. Your journal is one file that belongs to you.
-There are no accounts, no subscriptions and no cloud.
-
----
+The app runs on your own computer, and your journal is a single file you own.
+You don't need an account or a subscription, and nothing is stored in the cloud.
 
 ## What it does
 
-### Write
-- **Daily notes:** a pre-market plan, notes during the session, an end-of-day
-  review and **theses** (longer-running market ideas).
-- **Nothing is silently rewritten.** Every edit is kept as a new version with
-  full history. To add hindsight, write a dated "learned later" note instead of
-  changing what you originally wrote.
-- **Linking:** use `@MES`, `#tags` and links to trades or other entries.
-  Backlinks show where each idea came up again.
-- **Full-text search** across everything you've written.
-- **Screenshots and attachments** are stored next to your journal, never on
-  someone else's server.
+### Writing
 
-### Capture trades automatically
-- **Import any export file.** The platform, number format (`1,234.50` or
-  `1.234,50`), date order and timezone are detected for you, and re-importing
-  the same file never creates duplicates.
-- **Recognized exports:**
-  - Tradovate (Orders, Position History)
-  - TopstepX / ProjectX (Orders, Trades)
-  - NinjaTrader 8 (Executions, Trades, in any locale)
-  - Rithmic R|Trader (Order History)
-  - TradingView (Performance)
-- **Anything else:** any other file with recognizable fill or round-trip
-  columns is handled too, and a column-mapping importer covers the rest.
-  It works with any prop firm, platform or account type.
-- **Live connection (optional):** link Tradovate or TopstepX/ProjectX and fills
-  appear within about a second. The connection is **read-only**: this codebase
-  contains no order-placement code at all.
-- Trades are rebuilt from the raw fills: partial exits, reversals and fees
-  split fairly across them. Session days follow the futures calendar, which
-  rolls over at 5 pm Chicago time.
+You can keep a pre-market plan, notes during the session, an end-of-day review
+and theses (market ideas that play out over weeks). Editing an entry saves a
+new version and keeps the old ones. If you see something differently later,
+add a dated "learned later" note and the original stays as you wrote it.
+
+Mention a market with `@MES`, tag with `#tags`, or link to a trade or another
+entry, and backlinks show where an idea came up again. Search covers
+everything you've written. Screenshots and attachments are stored next to
+your journal on your computer.
+
+### Trade capture
+
+Import an export file and the app works out which platform it came from, the
+number format (`1,234.50` or `1.234,50`), the date order and the timezone.
+Importing the same file twice doesn't create duplicates.
+
+These exports are recognized directly:
+
+- Tradovate (Orders, Position History)
+- TopstepX / ProjectX (Orders, Trades)
+- NinjaTrader 8 (Executions, Trades, in any locale)
+- Rithmic R|Trader (Order History)
+- TradingView (Performance)
+
+Other files with recognizable fill or round-trip columns are read too, and a
+column-mapping importer handles anything left over, so any prop firm,
+platform or account type can be brought in.
+
+You can also connect Tradovate or TopstepX/ProjectX directly, and new fills
+show up within about a second. The connection only reads data; the codebase
+has no code for placing orders.
+
+Trades are rebuilt from the raw fills, including partial exits and reversals,
+with fees split across them. Session days follow the futures calendar, which
+rolls over at 5 pm Chicago time.
 
 ### Review
-- **Plan vs. actual:** write rules in your morning plan (such as "max 3 trades",
-  "stop after 2 losses") and the day review checks which you kept or broke.
-- **Daily recap:** a summary built from your data, with links back to each
-  trade and note, plus questions to reflect on.
-- **Weekly and monthly reports, and a calendar view.**
-- **"Seen this before?"** finds past entries similar to what you're writing now.
-- **Trade grading:** grade your process separately from the result, then
-  compare good process against good outcome.
-- **Behavior flags:** overtrading, revenge trades and trading after a losing
-  streak.
-- **Price excursions (MAE/MFE), slippage against your intended price,
-  economic calendar.**
 
-### Honest analytics
-Win rate and expectancy are shown with **confidence intervals**. When there
-aren't enough trades to tell, the app says *"can't tell yet"* instead of
-showing a number that looks precise but isn't.
+- Plan vs. actual: put rules in your morning plan (for example "max 3 trades"
+  or "stop after 2 losses") and the day review shows which ones you kept.
+- A daily recap built from your data, linking back to each trade and note,
+  with a few questions to reflect on.
+- Weekly and monthly reports and a calendar view.
+- "Seen this before?" finds past entries similar to the one you're writing.
+- Trade grading, so you can rate your process apart from the result and see
+  how often good process led to a good outcome.
+- Flags for overtrading, revenge trades and trading after a losing streak.
+- Price excursions (MAE/MFE), slippage against your intended price, and an
+  economic calendar.
 
-### Phone quick-notes
-Pair your phone by scanning a QR code on your home network, then jot notes
-from it. Notes written offline are saved and sent once you're back in range.
-The phone can only add notes and see the ones it sent. It can't open the rest of
-your journal.
+### Analytics
 
-### AI: optional, never required
+Win rate and expectancy come with confidence intervals. With too few trades
+to say anything, the app shows "can't tell yet" in place of a precise-looking
+number.
+
+### Phone notes
+
+Pair your phone by scanning a QR code on your home network, then write quick
+notes from it. Notes written offline are held on the phone and sent when it's
+back in range. A paired phone can add notes and see the ones it sent, and
+can't open the rest of your journal.
+
+### AI (optional)
+
 Everything above works without AI. If you want it, add your own Anthropic API
-key in **Settings → AI** to get written daily summaries and "Ask your journal".
-AI text is kept separate from your own writing. It cites the trades and
-entries it draws on, and any reference that doesn't match a real record is
-flagged. Your key is stored in the system keychain (or a private file), never
-in the journal.
-
----
+key in Settings → AI to get written daily summaries and "Ask your journal".
+AI text is stored apart from your own writing and cites the trades and entries
+it used; a reference that doesn't match a real record is flagged. The key is
+kept in your system keychain or a private file, never in the journal.
 
 ## Install
 
-**Download the app:** Windows, macOS and Linux builds are attached to each
-[GitHub Release](../../releases). See [docs/INSTALL.md](docs/INSTALL.md) for
-details and first-launch notes. The builds are not code-signed yet, so your
-system will ask you to confirm once.
+Windows, macOS and Linux builds are attached to each
+[GitHub Release](../../releases). [docs/INSTALL.md](docs/INSTALL.md) has the
+details. The builds aren't code-signed yet, so your system will ask you to
+confirm the first time you open the app.
 
-**Or run from source** (Python 3.11+, any OS):
+To run from source (Python 3.11+, any OS):
 
 ```bash
 pip install ".[desktop]"      # add ",ai" for the optional AI features
 completejournal-desktop       # opens the app in its own window
 ```
 
-Then click **Import** and choose an export file, or **Load demo data** to look
-around first.
+Then click Import and choose an export file, or Load demo data to look around
+first.
 
 ### Command line
 
@@ -115,37 +119,32 @@ completejournal demo   --db journal.db                       # sample data
 | macOS   | `~/Library/Application Support/CompleteJournal` |
 | Linux   | `~/.local/share/completejournal` |
 
-It is a single SQLite file (`journal.db`) plus an `attachments` folder. Copy
-the folder and you've backed up everything. See [docs/BACKUP.md](docs/BACKUP.md).
-You can also export everything to open formats (CSV, JSON and Markdown) at any
-time.
+The folder holds one SQLite file (`journal.db`) and an `attachments` folder,
+so copying it backs up everything ([docs/BACKUP.md](docs/BACKUP.md)). You can
+also export the whole journal to CSV, JSON and Markdown at any time.
 
-Nothing leaves your computer unless you turn on a feature that needs the
-internet: live sync, price data, AI, or the daily update check, which is off
-until you say yes.
-
----
+The app only goes online for features you turn on: live sync, price data, AI,
+and the daily update check, which stays off until you agree to it.
 
 ## How it's built
 
-- **Python + FastAPI** serves a small local web app. The window opens through
-  the system web view (pywebview), or a browser if that isn't available.
-- **SQLite** in WAL mode, with FTS5 for search.
-- **Design rules:**
-  - Raw fills are immutable.
-  - Trades are derived from the fills and can always be rebuilt.
-  - Journal entries are versioned.
-  - AI output lives only in its own table.
-- **Packaging:** PyInstaller. A GitHub Actions workflow tests, builds and
-  launch-checks the app on Windows, macOS and Linux for every push.
+The app is a small local web app served by Python and FastAPI. It opens in
+the system web view through pywebview, or in a browser when that isn't
+available. Data is stored in SQLite (WAL mode, FTS5 for search).
+
+Raw fills are never modified. Trades are derived from them and can be rebuilt
+at any time. Journal entries are versioned, and AI output has its own table.
+
+Builds are packaged with PyInstaller. A GitHub Actions workflow tests, builds
+and launch-checks the app on Windows, macOS and Linux on every push.
 
 ```bash
 pip install -e ".[dev]"
 python -m pytest              # 172 tests
 ```
 
-Importers are tested against real platform export files, and the P&L is
-reproduced to the cent against each platform's own numbers.
+The importers are tested against real platform export files, and the P&L they
+produce matches each platform's own figures to the cent.
 
 ## Documentation
 
@@ -158,9 +157,9 @@ reproduced to the cent against each platform's own numbers.
 
 ## Credits
 
-- Real-world export samples used in the tests come from the
-  [TradeTally](https://github.com/GeneBO98/tradetally) project (Apache-2.0).
-  See [tests/fixtures/real/README.md](tests/fixtures/real/README.md).
+- The real export samples used in the tests come from the
+  [TradeTally](https://github.com/GeneBO98/tradetally) project (Apache-2.0);
+  see [tests/fixtures/real/README.md](tests/fixtures/real/README.md).
 - Built with help from Claude (Anthropic).
 
 ## License
