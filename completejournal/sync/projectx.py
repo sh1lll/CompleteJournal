@@ -62,6 +62,10 @@ class ProjectXClient:
             raise RuntimeError(f"ProjectX auth failed: {data.get('errorMessage')}")
         self._token = data["token"]
 
+    def fresh_token(self) -> str:
+        self.authenticate()
+        return self._token
+
     def _post(self, path: str, body: dict) -> dict:
         if not self._token:
             self.authenticate()

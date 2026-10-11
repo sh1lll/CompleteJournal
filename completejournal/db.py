@@ -11,6 +11,7 @@ SCHEMA_VERSION = "1"
 def connect(path: str | Path) -> sqlite3.Connection:
     conn = sqlite3.connect(str(path))
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA busy_timeout = 5000")  # live sync and the UI write concurrently
     conn.execute("PRAGMA journal_mode = WAL")
     conn.execute("PRAGMA foreign_keys = ON")
     _migrate(conn)

@@ -58,6 +58,7 @@ class TradovateClient:
         if "errorText" in data and data["errorText"]:
             raise RuntimeError(f"Tradovate auth failed: {data['errorText']}")
         self._token = data["accessToken"]
+        self.user_id = data.get("userId")
 
     def _get(self, path: str, **params) -> list | dict:
         if not self._token:
@@ -70,6 +71,11 @@ class TradovateClient:
                                headers={"Authorization": f"Bearer {self._token}"})
         r.raise_for_status()
         return r.json()
+
+    def fresh_credentials(self) -> tuple[str, int]:
+        """Re-authenticate and return (token, userId) for the live connection."""
+        self.authenticate()
+        return self._token, int(self.user_id or 0)
 
     # -------------------------------------------------------------- data
     def accounts(self) -> list[dict]:

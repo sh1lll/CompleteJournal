@@ -42,6 +42,16 @@ class AddendumIn(BaseModel):
     body_md: str
 
 
+class LiveConnectIn(BaseModel):
+    platform: str
+    credentials: dict = {}
+    remember: bool = True
+
+
+class LivePlatformIn(BaseModel):
+    platform: str
+
+
 class KeyIn(BaseModel):
     key: str
 
@@ -56,7 +66,29 @@ class GradeIn(BaseModel):
 
 
 def create_app(db_path: str | Path, attachments_root: str | Path | None = None) -> FastAPI:
-    app = FastAPI(title="Complete Journal", version="0.1.0")
+    from contextlib import asynccontextmanager
+    from . import live as livemod, live_setup
+    manager = livemod.LiveManager()
+
+    def _start_live(platform: str, creds: dict):
+        proto, sweep = live_setup.build(platform, creds, db_path)
+        return manager.start(platform, proto, sweep)
+
+    @asynccontextmanager
+    async def lifespan(_app):
+        # reconnect platforms the user chose to remember (credentials stay in
+        # the OS keychain / private file, never in the database)
+        for platform in live_setup.PLATFORMS:
+            creds = live_setup.saved(platform)
+            if creds and creds.get("autoconnect", True):
+                try:
+                    _start_live(platform, creds)
+                except Exception:
+                    pass
+        yield
+        manager.stop_all()
+
+    app = FastAPI(title="Complete Journal", version="0.1.0", lifespan=lifespan)
     att_root = Path(attachments_root) if attachments_root else Path(str(db_path) + ".attachments")
     # create/upgrade the database at launch so a locked or corrupt file fails
     # immediately and clearly, not halfway through someone's writing
@@ -373,6 +405,41 @@ def create_app(db_path: str | Path, attachments_root: str | Path | None = None) 
                     "reason": "no price bars stored for this trade's window"}
         finally:
             c.close()
+
+    # ---------------------------------------------- live connections
+    app.state.live = manager
+
+    @app.get("/api/live/status")
+    def live_status():
+        st = manager.status()
+        return {"connections": st,
+                "saved": {p: bool(live_setup.saved(p)) for p in live_setup.PLATFORMS},
+                "note": "Read-only: live connections can never place, change or cancel orders."}
+
+    @app.post("/api/live/connect")
+    def live_connect(body: LiveConnectIn):
+        try:
+            creds = live_setup.validate(body.platform, body.credentials)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+        if body.remember:
+            live_setup.save(body.platform, {**creds, "autoconnect": True})
+        _start_live(body.platform, creds)
+        return {"started": True, "platform": body.platform, "remembered": body.remember}
+
+    @app.post("/api/live/disconnect")
+    def live_disconnect(body: LivePlatformIn):
+        manager.stop(body.platform)
+        creds = live_setup.saved(body.platform)
+        if creds:
+            live_setup.save(body.platform, {**creds, "autoconnect": False})
+        return {"stopped": True}
+
+    @app.post("/api/live/forget")
+    def live_forget(body: LivePlatformIn):
+        manager.stop(body.platform)
+        live_setup.forget(body.platform)
+        return {"forgotten": True}
 
     # --------------------------------------------------- optional AI
     @app.get("/api/ai/status")
