@@ -13,7 +13,7 @@
 | 0.4 | Research architecture building blocks | ✅ | → `docs/assessment/05-architecture.md` |
 | 0.5a | Draft sections 03 (journal experience) & 04 (analytics/AI) | ✅ | Spec-driven |
 | 0.5b | Synthesize research-dependent sections (01, 02, 05, 06, 07, 08) + executive summary (00) | ✅ | All eight assessment documents complete in `docs/assessment/` |
-| 0.6 | Commit, push, publish report page | ✅ | Pushed to `claude/lucid-wright-6iz9l2`; report published as shareable page |
+| 0.6 | Commit, push, publish report page | ✅ | Pushed to `claude/lucid-wright-6iz9l2`; report page: https://claude.ai/artifact/RweM6WpF5CGyPSK44To7nQ |
 
 **Phase 0 outcome (recommendation):** Build Complete Journal incrementally — journal-first, local-first (FastAPI + SQLite/FTS5 + TipTap + lightweight-charts), CSV capture as the permanent foundation, APIs (Tradovate/ProjectX/NT8 add-on) layered on. MVP 4–6 pw; full ~10–15 pw; ~$5–15/mo running costs. See `docs/assessment/00-executive-summary.md`.
 
