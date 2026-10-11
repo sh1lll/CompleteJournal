@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Complete Journal</title>
+<style>
+:root{
+  --bg:#faf8f4; --fg:#26231d; --muted:#6e675c; --rule:#ddd6c8; --card:#f1ede3;
+  --accent:#1f6f54; --accent-ink:#17543f; --pos:#1f6f54; --neg:#9d3b2d;
+  --body:Georgia,'Source Serif 4',serif; --mono:ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#191714; --fg:#e8e3d8; --muted:#a39a8a; --rule:#3a362e; --card:#221f1a;
+  --accent:#5db897; --accent-ink:#7fcbab; --pos:#5db897; --neg:#d06a57; color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.55}
+header{display:flex;flex-wrap:wrap;gap:.6rem;align-items:baseline;padding:1rem 16px;border-bottom:2px solid var(--rule)}
+header h1{font-size:1.15rem;margin:0 1rem 0 0}
+nav{display:flex;flex-wrap:wrap;gap:.4rem}
+nav button{font-family:var(--mono);font-size:.72rem;letter-spacing:.05em;border:1px solid var(--rule);background:transparent;color:var(--fg);border-radius:999px;padding:.35em .9em;cursor:pointer}
+nav button.active{border-color:var(--accent);color:var(--accent-ink)}
+main{max-width:980px;margin:0 auto;padding:1.2rem 16px 4rem}
+h2{font-size:1.2rem;margin:1.4rem 0 .6rem}
+textarea,input,select{font:inherit;color:var(--fg);background:var(--card);border:1px solid var(--rule);border-radius:6px;padding:.5rem .7rem;width:100%}
+textarea{min-height:200px;font-size:1.02rem;line-height:1.6;resize:vertical}
+.row{display:flex;flex-wrap:wrap;gap:.6rem;margin:.6rem 0}
+.row>*{flex:1;min-width:140px}
+button.primary{background:var(--accent);color:#fff;border:0;border-radius:6px;padding:.55rem 1.2rem;font:inherit;cursor:pointer}
+.card{background:var(--card);border:1px solid var(--rule);border-radius:8px;padding:.9rem 1.1rem;margin:.7rem 0}
+.card .meta{font-family:var(--mono);font-size:.68rem;color:var(--muted);display:flex;gap:.8rem;flex-wrap:wrap;margin-bottom:.35rem}
+.card .body{white-space:pre-wrap}
+.kind{color:var(--accent-ink)}
+.addendum{border-left:3px solid var(--rule);margin-top:.6rem;padding:.3rem .8rem;font-size:.92rem}
+.addendum .meta{color:var(--muted);font-family:var(--mono);font-size:.65rem}
+table{border-collapse:collapse;width:100%;font-size:.85rem}
+th{font-family:var(--mono);font-size:.65rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);text-align:left;padding:.45rem .6rem;border-bottom:2px solid var(--rule)}
+td{padding:.4rem .6rem;border-bottom:1px solid var(--rule);font-variant-numeric:tabular-nums}
+.pos{color:var(--pos)} .neg{color:var(--neg)}
+.tablebox{overflow-x:auto}
+.note{font-size:.85rem;color:var(--muted)}
+.warn{color:var(--neg);font-size:.85rem}
+mark{background:transparent;color:var(--accent-ink);font-weight:700}
+.statgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.7rem;margin:.8rem 0}
+.stat{background:var(--card);border:1px solid var(--rule);border-radius:8px;padding:.7rem .9rem}
+.stat .v{font-size:1.3rem;font-variant-numeric:tabular-nums}
+.stat .l{font-family:var(--mono);font-size:.62rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+[hidden]{display:none!important}
+a{color:var(--accent-ink)}
+</style>
+</head>
+<body>
+<header>
+  <h1>Complete Journal</h1>
+  <nav id="nav">
+    <button data-v="write" class="active">Write</button>
+    <button data-v="journal">Journal</button>
+    <button data-v="session">Session</button>
+    <button data-v="trades">Trades</button>
+    <button data-v="analytics">Analytics</button>
+    <button data-v="import">Import</button>
+  </nav>
+</header>
+<main>
+
+<section id="v-write">
+  <h2>New entry</h2>
+  <p class="note">A blank page, always. Kind, title and date are optional.</p>
+  <div class="row">
+    <select id="w-kind">
+      <option value="">(no kind)</option>
+      <option>market-thought</option><option>pre-market</option><option>intraday</option>
+      <option>trade-review</option><option>post-trade</option><option>end-of-day</option>
+      <option>knowledge</option><option>psychology</option>
+    </select>
+    <input id="w-title" placeholder="Title (optional)">
+    <input id="w-about" type="date" title="Session date this entry is about (optional)">
+  </div>
+  <textarea id="w-body" placeholder="Write freely. Markdown welcome."></textarea>
+  <div class="row"><button class="primary" id="w-save">Save entry</button><span id="w-msg" class="note"></span></div>
+</section>
+
+<section id="v-journal" hidden>
+  <h2>Journal</h2>
+  <div class="row">
+    <input id="j-q" placeholder="Full-text search…">
+    <select id="j-kind"><option value="">All kinds</option>
+      <option>market-thought</option><option>pre-market</option><option>intraday</option>
+      <option>trade-review</option><option>post-trade</option><option>end-of-day</option>
+      <option>knowledge</option><option>psychology</option></select>
+  </div>
+  <div id="j-list"></div>
+</section>
+
+<section id="v-session" hidden>
+  <h2>Session timeline</h2>
+  <div class="row"><input type="date" id="s-date"><button class="primary" id="s-load">Load day</button></div>
+  <div id="s-out"></div>
+</section>
+
+<section id="v-trades" hidden>
+  <h2>Trades</h2>
+  <p class="note">Derived from raw executions (FIFO, flat→flat). Rebuildable at any time; never edited by hand.</p>
+  <div class="tablebox"><table id="t-table"><thead><tr>
+    <th>Date</th><th>Account</th><th>Sym</th><th>Dir</th><th>Max qty</th><th>Avg in</th><th>Avg out</th><th>Net P&L</th><th>Fills</th><th></th>
+  </tr></thead><tbody></tbody></table></div>
+  <div id="t-detail"></div>
+</section>
+
+<section id="v-analytics" hidden>
+  <h2>Analytics</h2>
+  <div id="a-stats" class="statgrid"></div>
+  <div id="a-notes"></div>
+  <h2>Reconciliation (compare to your platform's daily statement)</h2>
+  <div class="tablebox"><table id="a-recon"><thead><tr>
+    <th>Date</th><th>Account</th><th>Trades</th><th>Fills</th><th>Gross</th><th>Fees</th><th>Net</th><th>Open</th>
+  </tr></thead><tbody></tbody></table></div>
+</section>
+
+<section id="v-import" hidden>
+  <h2>Import executions</h2>
+  <p class="note">CSV exports from your platform. Re-importing the same file is safe — duplicates are skipped. Platform parsers are presets; anything else can use the CLI generic importer with a column mapping.</p>
+  <div class="row">
+    <select id="i-format"><option>tradovate</option><option>ninjatrader</option><option>rithmic</option></select>
+    <input id="i-account" placeholder="Account label, e.g. Apex #2 (50k eval)">
+    <input id="i-tz" type="number" value="0" title="Minutes offset of the file's timestamps from UTC (e.g. -300 for US/Central DST)">
+  </div>
+  <div class="row"><input type="file" id="i-file" accept=".csv"><button class="primary" id="i-go">Import</button></div>
+  <pre id="i-out" class="note" style="white-space:pre-wrap"></pre>
+</section>
+
+</main>
+<script>
+const $ = s => document.querySelector(s);
+const api = async (path, opts) => {
+  const r = await fetch(path, opts);
+  if (!r.ok) throw new Error((await r.json().catch(()=>({detail:r.statusText}))).detail);
+  return r.json();
+};
+const esc = s => (s??'').toString().replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const money = v => v==null?'—':(v<0?'-':'')+'$'+Math.abs(v).toFixed(2);
+const cls = v => v>0?'pos':v<0?'neg':'';
+
+// nav
+document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('active',x===b));
+  document.querySelectorAll('main section').forEach(s=>s.hidden = s.id !== 'v-'+b.dataset.v);
+  const v=b.dataset.v;
+  if(v==='journal') loadJournal();
+  if(v==='trades') loadTrades();
+  if(v==='analytics') loadAnalytics();
+});
+
+// write
+$('#w-save').onclick = async () => {
+  const body = $('#w-body').value.trim();
+  if(!body){ $('#w-msg').textContent='Nothing to save.'; return; }
+  try{
+    const res = await api('/api/entries', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({body_md: body, kind: $('#w-kind').value||null,
+        title: $('#w-title').value||null, about_date: $('#w-about').value||null})});
+    $('#w-msg').textContent = `Saved entry #${res.id}.`;
+    $('#w-body').value=''; $('#w-title').value='';
+  }catch(e){ $('#w-msg').textContent = 'Error: '+e.message; }
+};
+
+// journal list + search
+function entryCard(e, snippet){
+  return `<div class="card"><div class="meta">
+    <span>#${e.id}</span>
+    ${e.kind?`<span class="kind">${esc(e.kind)}</span>`:''}
+    <span>written ${esc((e.written_at||'').slice(0,16).replace('T',' '))}Z</span>
+    ${e.about_date?`<span>about ${esc(e.about_date)}</span>`:''}
+  </div>${e.title?`<strong>${esc(e.title)}</strong>`:''}
+  <div class="body">${snippet ?? esc(e.body_md||'')}</div></div>`;
+}
+async function loadJournal(){
+  const q = $('#j-q').value.trim();
+  if(q){
+    const hits = await api('/api/search?q='+encodeURIComponent(q));
+    $('#j-list').innerHTML = hits.length
+      ? hits.map(h=>entryCard(h, h.snippet)).join('')
+      : '<p class="note">No matches.</p>';
+    return;
+  }
+  const kind = $('#j-kind').value;
+  const rows = await api('/api/entries?limit=100'+(kind?`&kind=${kind}`:''));
+  $('#j-list').innerHTML = rows.length ? rows.map(e=>entryCard(e)).join('') : '<p class="note">No entries yet — go write one.</p>';
+}
+$('#j-q').addEventListener('change', loadJournal);
+$('#j-kind').addEventListener('change', loadJournal);
+
+// session
+$('#s-load').onclick = async () => {
+  const d = $('#s-date').value; if(!d) return;
+  const t = await api('/api/sessions/'+d);
+  let html = '';
+  html += `<h2>${d} — ${t.trades.length} trade(s), ${t.entries.length} entrie(s)</h2>`;
+  if(t.trades.length){
+    html += '<div class="tablebox"><table><thead><tr><th>Entry</th><th>Sym</th><th>Dir</th><th>Net</th></tr></thead><tbody>'+
+      t.trades.map(x=>`<tr><td>${esc(x.entry_ts.slice(11,19))}</td><td>${esc(x.symbol)}</td><td>${esc(x.direction)}</td><td class="${cls(x.net_pnl)}">${money(x.net_pnl)}</td></tr>`).join('')+'</tbody></table></div>';
+  }
+  html += t.entries.map(e=>entryCard(e)).join('') || '<p class="note">No writing for this day.</p>';
+  $('#s-out').innerHTML = html;
+};
+
+// trades
+async function loadTrades(){
+  const rows = await api('/api/trades');
+  $('#t-table tbody').innerHTML = rows.map(t=>`<tr>
+    <td>${esc(t.session_date)}</td><td>${esc(t.account_name)}</td><td>${esc(t.symbol)}</td>
+    <td>${esc(t.direction)}${t.is_open?' <span class="warn">(open)</span>':''}</td>
+    <td>${t.qty_max}</td><td>${t.avg_entry?.toFixed(2)}</td><td>${t.avg_exit!=null?t.avg_exit.toFixed(2):'—'}</td>
+    <td class="${cls(t.net_pnl)}">${money(t.net_pnl)}</td><td>${t.n_executions}</td>
+    <td><a href="#" data-id="${t.id}" class="t-open">detail</a></td></tr>`).join('')
+    || '<tr><td colspan="10" class="note">No trades imported yet.</td></tr>';
+  document.querySelectorAll('.t-open').forEach(a=>a.onclick=async ev=>{
+    ev.preventDefault();
+    const d = await api('/api/trades/'+a.dataset.id);
+    $('#t-detail').innerHTML = `<div class="card"><div class="meta"><span>trade #${d.trade.id}</span><span>${esc(d.trade.algorithm_version)}</span></div>
+      <div class="tablebox"><table><thead><tr><th>Time (UTC)</th><th>Side</th><th>Qty</th><th>Price</th><th>Fees</th><th>Source</th></tr></thead><tbody>
+      ${d.executions.map(e=>`<tr><td>${esc(e.ts_utc.slice(0,19).replace('T',' '))}</td><td>${esc(e.side)}</td><td>${e.attributed_qty}/${e.qty}</td><td>${e.price}</td><td>${money(e.fees)}</td><td>${esc(e.source)}</td></tr>`).join('')}
+      </tbody></table></div>
+      ${d.entries.length?d.entries.map(e=>entryCard(e)).join(''):'<p class="note">No journal entries linked to this trade yet.</p>'}</div>`;
+  });
+}
+
+// analytics
+async function loadAnalytics(){
+  const s = await api('/api/stats');
+  const tiles = [
+    ['Closed trades', s.n], ['Win rate', s.win_rate!=null?(100*s.win_rate).toFixed(1)+'%':'—'],
+    ['Expectancy / trade', money(s.expectancy)], ['Profit factor', s.profit_factor?.toFixed(2) ?? '—'],
+    ['Avg win', money(s.avg_win)], ['Avg loss', s.avg_loss!=null?money(-s.avg_loss):'—'],
+    ['Net P&L', money(s.net_pnl)], ['Fees paid', money(s.fees)], ['Max drawdown', money(-s.max_drawdown)],
+  ];
+  $('#a-stats').innerHTML = tiles.map(([l,v])=>`<div class="stat"><div class="v">${v}</div><div class="l">${l}</div></div>`).join('');
+  $('#a-notes').innerHTML = (s.notes||[]).map(n=>`<p class="warn">⚠ ${esc(n)}</p>`).join('');
+  const rec = await api('/api/reconciliation');
+  $('#a-recon tbody').innerHTML = rec.map(r=>`<tr><td>${esc(r.date)}</td><td>${esc(r.account)}</td><td>${r.trades}</td><td>${r.executions}</td><td class="${cls(r.gross_pnl)}">${money(r.gross_pnl)}</td><td>${money(r.fees)}</td><td class="${cls(r.net_pnl)}">${money(r.net_pnl)}</td><td>${r.still_open||0}</td></tr>`).join('')
+    || '<tr><td colspan="8" class="note">Nothing to reconcile yet.</td></tr>';
+}
+
+// import
+$('#i-go').onclick = async () => {
+  const f = $('#i-file').files[0];
+  if(!f || !$('#i-account').value.trim()){ $('#i-out').textContent='Choose a file and name the account.'; return; }
+  const fd = new FormData();
+  fd.append('file', f); fd.append('format', $('#i-format').value);
+  fd.append('account', $('#i-account').value.trim());
+  fd.append('tz_offset_minutes', $('#i-tz').value || '0');
+  try{
+    const res = await api('/api/import', {method:'POST', body: fd});
+    $('#i-out').textContent = JSON.stringify(res, null, 2);
+  }catch(e){ $('#i-out').textContent = 'Error: '+e.message; }
+};
+
+// default date = today
+$('#s-date').value = new Date().toISOString().slice(0,10);
+</script>
+</body>
+</html>

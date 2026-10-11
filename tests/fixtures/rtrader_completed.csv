@@ -1,0 +1,4 @@
+Account,Symbol,Buy/Sell,Avg Fill Price,Qty Filled,Update Time,Order Number,Status
+APEX-001,NQZ6,B,21500.75,1,2026-10-09 09:32:00,RT-9001,Complete
+APEX-001,NQZ6,S,21510.25,1,2026-10-09 09:38:30,RT-9002,Complete
+APEX-001,NQZ6,B,0,0,2026-10-09 09:40:00,RT-9003,Cancelled

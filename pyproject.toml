@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "completejournal"
+version = "0.1.0"
+description = "Journal-first automated trading journal: universal trade capture, freeform reflection, honest analytics."
+requires-python = ">=3.11"
+dependencies = ["fastapi>=0.110", "uvicorn>=0.29"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "httpx>=0.27"]
+
+[tool.setuptools.packages.find]
+include = ["completejournal*"]
+
+[tool.setuptools.package-data]
+completejournal = ["schema.sql", "web/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

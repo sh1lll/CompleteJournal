@@ -17,24 +17,36 @@
 
 **Phase 0 outcome (recommendation):** Build Complete Journal incrementally — journal-first, local-first (FastAPI + SQLite/FTS5 + TipTap + lightweight-charts), CSV capture as the permanent foundation, APIs (Tradovate/ProjectX/NT8 add-on) layered on. MVP 4–6 pw; full ~10–15 pw; ~$5–15/mo running costs. See `docs/assessment/00-executive-summary.md`.
 
+## Decisions
+
+- ✅ **D1 (user, 2026-10-11)**: Complete Journal supports **ALL firms, platforms, and account types** — it is a universal journal, not a single-integration tool. Resolves former assumption A1. Architectural consequence: a platform-agnostic ingestion layer — one normalized execution schema + pluggable importer adapters. CSV/file importers are the universal tier (every platform exports something); API adapters (Tradovate, ProjectX, IBKR Flex, MT5, cTrader, NT8 add-on) are an optional tier layered on the same normalized schema. The generic column-mapping CSV importer guarantees that even unlisted platforms can feed the journal.
+
 ## Assumptions (marked for review)
 
-- 🚩 **A1**: User trades futures via prop firms (inferred from brief language). Research weighted toward Tradovate / Rithmic / NinjaTrader / TradingView / ProjectX; general brokers covered secondarily. **Confirm actual firm(s), platform(s), account types — this selects the Phase-2 integration (see `docs/assessment/02-feasibility.md` §2.7 for the full unknowns list).**
-- 🚩 **A2**: Deliverable for this phase is the research assessment + plan; implementation begins on user go-ahead (or continues autonomously if instructed).
-- 🚩 **A3**: Pricing/policy figures labeled [U] in the assessment (Tradovate fees, ProjectX firm list, prop-firm automation policies, SaaS prices) must be re-verified before money is spent.
+- 🚩 **A2**: Phase 1 implementation now underway (user go-ahead given via D1 + "start Phase 1" standing offer accepted in context).
+- 🚩 **A3**: Pricing/policy figures labeled [U] in the assessment must be re-verified before money is spent.
+- 🚩 **A4**: Platform-specific CSV importers are built against *documented* export layouts (synthetic fixtures); they must be validated against real export files from each platform before being trusted. The generic mapping importer is the safe path meanwhile.
 
-## Phase 0.5 — User inputs needed before Phase 2 (🚩 blocking only the integration choice, not Phase 1)
+## Phase 1 — MVP: capture + journal core 🔄 (core built 2026-10-11, 32 tests passing)
 
-1. Which prop firm(s)/broker(s) and account types (Rithmic vs Tradovate vs TopstepX; eval vs funded)?
-2. Which execution front-end (NT8 desktop, TradingView, TopstepX web, R Trader, Quantower)?
-3. Existing API subscriptions (Tradovate ~$25/mo add-on, ProjectX $29/mo)?
-4. Firm's current written automation/data-access policy.
-5. Market-data budget tolerance ($0 prototype vs Databento usage-based).
+| Item | Status | Notes |
+|---|---|---|
+| Schema: immutable `executions` → derived `trades`, `entries` + versions + addenda, `links`, `tags`, `attachments`, `ai_artifacts`, FTS5 | ✅ | `completejournal/schema.sql` |
+| CSV importers: Tradovate, NinjaTrader 8, Rithmic R Trader + **generic column-mapping importer** (the universal tier per D1) | ✅ | 🚩 A4: validated on synthetic fixtures only — run real platform exports through them |
+| FIFO reconstruction: flat→flat trades, scale-ins/outs, **reversal splitting**, pro-rata fees, rebuildable (`algorithm_version`) | ✅ | 10 golden-scenario tests incl. reversal fee attribution |
+| Reconciliation report (computed vs platform statement, per account+day) | ✅ | `analytics.reconciliation` |
+| Journal store: versioned immutability, addenda, soft-delete only, AI structurally barred from `entries` | ✅ | provenance invariants tested |
+| FTS5 search with snippets; bidirectional entry↔trade/session/instrument links | ✅ | |
+| Core stats with sample-size honesty (n<30 flagged) + breakdowns + equity curve | ✅ | |
+| Web UI: write / journal+search / session timeline / trades+detail / analytics / import | ✅ MVP | textarea editor; **TipTap upgrade deferred to Phase 2/5** |
+| CLI: init/import/rebuild/stats/reconcile/write/search/serve | ✅ | `python -m completejournal …` |
+| Live verification | ✅ | CLI + HTTP smoke test: 3 platforms imported, P&L hand-checked (MES $52.50, ES $83.32, NQ $190.00) |
+| Markdown/git export mirror + full data export | ⏳ next | J9 requirement |
+| Attachments upload (schema exists) + image paste | ⏳ | |
+| Month-grid calendar UI (API endpoint exists) | ⏳ | |
+| Litestream backup setup docs | ⏳ | |
 
-## Phase 1 — MVP: capture + journal core (4–6 pw) ⏳
-
-Schema (immutable `executions` → derived `trades`, `entries`, `links`, `attachments`, `ai_artifacts`) · CSV importers (Tradovate/NT8/R Trader) · FIFO reconstruction + reversal splitting + golden-file tests + broker-P&L reconciliation · TipTap editor (image paste, @-mentions, versioned immutability) · session view & calendar · FTS5 search · core stats with sample-size warnings · Litestream backup + git markdown mirror + full export.
-**Interim habits to start immediately (zero code):** daily writing in markdown/Obsidian; daily CSV export ritual into `data/raw/<date>/`.
+**Interim habits (zero code):** daily writing in markdown/Obsidian; daily CSV export ritual into `data/raw/<date>/` (gitignored).
 
 ## Phase 2 — Auto-sync + market context (3–5 pw) ⏳ (blocked on 🚩 Phase 0.5)
 
