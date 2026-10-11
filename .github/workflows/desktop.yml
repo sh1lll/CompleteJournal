@@ -7,6 +7,9 @@ name: Desktop apps
 on:
   push:
     tags: ["v*"]
+    # build + smoke-test on every push to main and to working branches
+    # (releases are still published only from v* tags)
+    branches: ["main", "claude/**"]
   pull_request:
   workflow_dispatch:
 
