@@ -11,7 +11,7 @@ Complete Journal is — first and foremost — a *journal*: a persistent, search
 
 ## Status
 
-Research ✅ · Journal + capture ✅ · Deeper analytics ✅ · Optional AI ✅ · Desktop app builds ✅ (Windows/macOS/Linux) · Live API sync ~80% — see `ROADMAP.md`. **Install:** [docs/INSTALL.md](docs/INSTALL.md).
+All planned features built ✅ · Windows, macOS and Linux builds pass on GitHub (tests, build, launch check) · Remaining items need accounts, certificates or a release decision — see `ROADMAP.md`. **Install:** [docs/INSTALL.md](docs/INSTALL.md) · **Signing:** [docs/SIGNING.md](docs/SIGNING.md).
 
 ## Quick start
 
@@ -33,7 +33,7 @@ CLI equivalents:
 ```bash
 python -m completejournal import --db journal.db --file any_export.csv   # auto-detected
 python -m completejournal demo   --db journal.db                         # sample data
-python -m pytest                                                          # 133 tests
+python -m pytest                                                          # 172 tests
 ```
 
 AI is optional. "Seen this before?", daily recaps, plan-vs-actual checks and
