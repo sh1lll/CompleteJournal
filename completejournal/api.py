@@ -58,10 +58,18 @@ class GradeIn(BaseModel):
 def create_app(db_path: str | Path, attachments_root: str | Path | None = None) -> FastAPI:
     app = FastAPI(title="Complete Journal", version="0.1.0")
     att_root = Path(attachments_root) if attachments_root else Path(str(db_path) + ".attachments")
+    # create/upgrade the database at launch so a locked or corrupt file fails
+    # immediately and clearly, not halfway through someone's writing
+    dbmod.connect(db_path).close()
 
     def conn() -> sqlite3.Connection:
         # SQLite per-request connection: simple and safe for a single user.
         return dbmod.connect(db_path)
+
+    @app.get("/api/health")
+    def health():
+        from . import __version__
+        return {"ok": True, "version": __version__}
 
     @app.get("/", response_class=HTMLResponse)
     def index():

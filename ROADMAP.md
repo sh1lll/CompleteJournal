@@ -71,13 +71,33 @@
 
 Breakdowns with n + confidence intervals · MAE/MFE · slippage · behavioral flags (post-loss re-entry, size escalation, overtrading) · process-vs-outcome grading · weekly/monthly reports.
 
-## Phase 4 — AI layer (3–4 pw) ⏳
+## Phase 3b — Analytics completion ✅ (2026-10-11)
 
-Embeddings + hybrid retrieval ("when have I seen this before?") · daily digest with citations (stored in `ai_artifacts`, never in entries) · plan-vs-actual questioner · weekly theme reports · rule-vs-behavior prompts · tag suggestions. Explicitly excluded: AI trade grading/coach verdicts.
+| Item | Status | Notes |
+|---|---|---|
+| MAE/MFE/capture per trade + winner/loser profile | ✅ | from stored bars; labelled approximate; absent without bars |
+| Plan vs actual (free-text plan + optional checkable rule lines) | ✅ | instruments, max trades, max loss, max contracts, trading window (session tz), stop after N losses |
+| Weekly & monthly reports (UI + Markdown export) | ✅ | numbers beside the period's writing |
+| Day review screen (plan ↔ what happened, recap, seen-before) | ✅ | stacks on phones |
 
-## Phase 5 — Polish & resilience (ongoing) ⏳
+## Phase 4 — AI, made optional ✅ (2026-10-11)
 
-Optional Tauri wrap · mobile `/capture` PWA · optional VPS for live sync · import of interim markdown archive · quarterly restore drills · importer upkeep.
+- **D3 (user):** AI must be a nice-to-have, never required. Every review feature has a no-AI path:
+  - "Seen this before?" — local TF-IDF similarity over your own entries, explains each match ✅
+  - Daily recap — built from records with citations and reflection questions ✅
+- Optional Claude layer (`ai.py`): daily summary + "Ask your journal"; official `anthropic` SDK, `claude-opus-5-5` default, effort medium, server-side refusal fallbacks on; output only in `ai_artifacts`; citations validated (unknown ids flagged); key in env / OS keychain / 0600 file, never in the DB ✅
+- Not yet exercised against the live API (no key in build env) — request shape verified against the real SDK with a mock transport. 🚩 first live call by any user with a key confirms it.
+
+## Phase 5 — Desktop app ✅ builds (2026-10-11)
+
+| Item | Status | Notes |
+|---|---|---|
+| Desktop launcher: own window (pywebview → Chromium app-mode → browser), per-OS data folder, localhost-only free port | ✅ | `completejournal-desktop` |
+| PyInstaller spec (data files explicit, AI bundled but off) | ✅ | Linux build produced and run here: UI, import, demo, recap, reports all verified from the packaged binary |
+| GitHub Actions: build + headless smoke test on Windows/macOS/Linux, release on `v*` tags | ✅ written | smoke step verified locally; 🚩 Windows/macOS jobs run for the first time on GitHub |
+| Code signing (Windows Authenticode, Apple Developer ID + notarization) | 🚩 needs user | paid certificates (~$99/yr Apple; ~$100–400/yr Windows) — until then users confirm a first-launch warning |
+| Auto-update | ⏳ | after signing |
+| Mobile capture PWA polish, optional VPS live sync | ⏳ | |
 
 ## Deferred / open items
 

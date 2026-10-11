@@ -11,7 +11,7 @@ Complete Journal is — first and foremost — a *journal*: a persistent, search
 
 ## Status
 
-Phase 0 research ✅ · Phase 1 journal + capture ✅ · Phase 2 sync + context ~80% · Phase 3 analytics ~70% · Phase 4 AI ⏳ · Phase 5 desktop installer ⏳ — see `ROADMAP.md`.
+Research ✅ · Journal + capture ✅ · Deeper analytics ✅ · Optional AI ✅ · Desktop app builds ✅ (Windows/macOS/Linux) · Live API sync ~80% — see `ROADMAP.md`. **Install:** [docs/INSTALL.md](docs/INSTALL.md).
 
 ## Quick start
 
@@ -19,8 +19,9 @@ Runs on Windows, macOS and Linux (Python 3.11+). Everything stays on your
 computer: one `journal.db` file plus an attachments folder.
 
 ```bash
-pip install -e ".[dev]"
-python -m completejournal serve --db journal.db      # open http://127.0.0.1:8321
+pip install -e ".[dev,desktop]"
+completejournal-desktop                              # opens the app in its own window
+# or: python -m completejournal serve --db journal.db  (browser tab at http://127.0.0.1:8321)
 ```
 
 In the app: **Import** → choose any export file → done. The platform, number
@@ -32,8 +33,13 @@ CLI equivalents:
 ```bash
 python -m completejournal import --db journal.db --file any_export.csv   # auto-detected
 python -m completejournal demo   --db journal.db                         # sample data
-python -m pytest                                                          # 110 tests
+python -m pytest                                                          # 133 tests
 ```
+
+AI is optional. "Seen this before?", daily recaps, plan-vs-actual checks and
+weekly/monthly reports all run on your computer without it. With an Anthropic
+API key (Settings → AI) you also get written AI summaries and "Ask your
+journal"; AI text is kept separate from your writing and cites its sources.
 
 Recognized exports: Tradovate (Orders, Position History), TopstepX/ProjectX
 (Orders, Trades), NinjaTrader 8 (Executions, Trades — any locale), Rithmic
