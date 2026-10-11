@@ -21,6 +21,9 @@ def connect(path: str | Path) -> sqlite3.Connection:
 def _migrate(conn: sqlite3.Connection) -> None:
     schema = resources.files("completejournal").joinpath("schema.sql").read_text(encoding="utf-8")
     conn.executescript(schema)
+    # columns added after a journal was first created (CREATE TABLE IF NOT
+    # EXISTS does not add them to existing files)
+    _ensure_column(conn, "executions", "intended_price", "REAL")
     conn.execute(
         "INSERT INTO meta(key, value) VALUES ('schema_version', ?) "
         "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
@@ -28,6 +31,12 @@ def _migrate(conn: sqlite3.Connection) -> None:
     )
     _seed_instruments(conn)
     conn.commit()
+
+
+def _ensure_column(conn: sqlite3.Connection, table: str, column: str, decl: str) -> None:
+    cols = {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}
+    if column not in cols:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {decl}")
 
 
 # CME/CBOT/NYMEX/COMEX contract specs most relevant to futures journaling.

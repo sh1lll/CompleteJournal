@@ -29,6 +29,9 @@ class Stats:
     net_pnl: float = 0.0
     max_drawdown: float = 0.0
     low_sample: bool = True
+    win_rate_ci95: tuple | None = None
+    expectancy_ci95: tuple | None = None
+    edge: str = "too few trades to estimate"
     notes: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
@@ -72,6 +75,10 @@ def _compute(rows: list[sqlite3.Row]) -> Stats:
         s.profit_factor = win_sum / loss_sum
     elif win_sum > 0:
         s.notes.append("no losing trades yet — profit factor undefined")
+    from .stats import bootstrap_mean, verdict, wilson
+    s.win_rate_ci95 = wilson(s.wins, decided) if decided else None
+    s.expectancy_ci95 = bootstrap_mean([r["net_pnl"] for r in rows])
+    s.edge = verdict(s.expectancy_ci95)
     s.low_sample = s.n < MIN_SAMPLE
     if s.low_sample:
         s.notes.append(f"n={s.n} < {MIN_SAMPLE}: treat every figure as noise-dominated")

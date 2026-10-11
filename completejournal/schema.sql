@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS executions (
     ts_utc       TEXT NOT NULL,           -- ISO-8601 UTC
     fees         REAL NOT NULL DEFAULT 0, -- commissions + exchange fees for this fill
     order_type   TEXT,                    -- limit | market | stop | ...
+    intended_price REAL,                  -- stop/limit price when the export records it (slippage)
     raw_payload  TEXT,                    -- original row/JSON, verbatim
     dedupe_key   TEXT NOT NULL UNIQUE,    -- stable hash; re-imports are no-ops
     created_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))

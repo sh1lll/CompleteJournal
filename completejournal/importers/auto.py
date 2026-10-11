@@ -266,9 +266,16 @@ def parse_file(source, *, tz: str | None = None, dayfirst: bool | None = None,
                 if qty <= 0:
                     continue
                 root, contract = P.parse_instrument(inst)
+                otype = (P.first(r, "type", "ordertype") or "").strip().lower() or None
+                intended = None
+                if otype and "stop" in otype:
+                    intended = num(P.first(r, "stopprice", "triggerprice", "stop"))
+                elif otype and "limit" in otype:
+                    intended = num(P.first(r, "limitprice", "limit"))
                 add(symbol=root, contract=contract, side=P.parse_side(side_v), qty=qty,
                     price=num(px), ts_utc=when(ts), exec_id=eid, order_id=oid,
-                    fees=fees_of(r), raw=raw, account=account)
+                    fees=fees_of(r), raw=raw, account=account, order_type=otype,
+                    intended_price=intended or None)
         except (ValueError, KeyError, TypeError) as e:
             warnings.append(f"row {i}: skipped ({e})")
 

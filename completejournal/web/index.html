@@ -253,11 +253,13 @@ a{color:var(--accent-ink)}
   <div id="a-pvo" class="statgrid"></div>
   <h2>Behavioral flags <span class="note" style="font-weight:400">(review prompts with evidence — not verdicts)</span></h2>
   <div id="a-flags"></div>
+  <h2>Slippage</h2>
+  <div id="a-slip"></div>
   <h2>Around economic releases</h2>
   <div id="a-events" class="statgrid"></div>
   <h2>Breakdowns</h2>
   <div class="row"><select id="a-dim"><option value="symbol">By instrument</option><option value="weekday">By weekday</option><option value="hour">By hour (UTC)</option><option value="account">By account</option></select></div>
-  <div class="tablebox"><table id="a-bd"><thead><tr><th>Bucket</th><th>n</th><th>Win rate</th><th>Expectancy</th><th>Net P&L</th><th></th></tr></thead><tbody></tbody></table></div>
+  <div class="tablebox"><table id="a-bd"><thead><tr><th>Bucket</th><th>n</th><th>Win rate</th><th>Expectancy</th><th>95% range</th><th>Net P&L</th><th>Edge?</th></tr></thead><tbody></tbody></table></div>
   <h2>Reconciliation (compare to your platform's daily statement)</h2>
   <div class="tablebox"><table id="a-recon"><thead><tr>
     <th>Date</th><th>Account</th><th>Trades</th><th>Fills</th><th>Gross</th><th>Fees</th><th>Net</th><th>Open</th>
@@ -663,7 +665,9 @@ async function loadAnalytics(){
     ['Net P&L', money(s.net_pnl)], ['Fees paid', money(s.fees)], ['Max drawdown', money(-s.max_drawdown)],
   ];
   $('#a-stats').innerHTML = tiles.map(([l,v])=>`<div class="stat"><div class="v">${v}</div><div class="l">${l}</div></div>`).join('');
-  $('#a-notes').innerHTML = (s.notes||[]).map(n=>`<p class="warn">⚠ ${esc(n)}</p>`).join('');
+  const ci = s.expectancy_ci95, wr = s.win_rate_ci95;
+  $('#a-notes').innerHTML = (ci ? `<p><strong>Is there an edge?</strong> ${esc(s.edge)} — expectancy ${money(s.expectancy)} per trade, 95% range ${money(ci[0])} to ${money(ci[1])}${wr?`; win rate range ${(100*wr[0]).toFixed(0)}–${(100*wr[1]).toFixed(0)}%`:''}.</p>` : '')
+    + (s.notes||[]).map(n=>`<p class="warn">⚠ ${esc(n)}</p>`).join('');
   // process vs outcome quadrant
   const pvo = await api('/api/stats/process-vs-outcome');
   const quad = [
@@ -684,6 +688,13 @@ async function loadAnalytics(){
     fhtml += `<p class="note">After ${st.k}+ losses: expectancy ${money(st.after_k_losses.expectancy)} (n=${st.after_k_losses.n}) · after ${st.k}+ wins: ${money(st.after_k_wins.expectancy)} (n=${st.after_k_wins.n}) · overall: ${money(st.overall.expectancy)} (n=${st.overall.n}). ${esc(st.note)}</p>`;
   }
   $('#a-flags').innerHTML = fhtml;
+
+  // slippage (only where the export recorded stop/limit prices)
+  const sl = await api('/api/stats/slippage');
+  $('#a-slip').innerHTML = sl.fills_measured
+    ? '<div class="statgrid">' + Object.entries(sl.by_order_type).map(([k,v]) =>
+        `<div class="stat"><div class="v">${v.avg_ticks!=null?v.avg_ticks.toFixed(2)+' ticks':'—'}</div><div class="l">avg ${esc(k)} slippage · ${v.fills} fills · ${money(-v.total_dollars)}</div></div>`).join('') + `</div><p class="note">${esc(sl.note)}</p>`
+    : '<p class="note">No fills with a recorded stop/limit price yet. Exports that include them (e.g. TopstepX/ProjectX order history) are measured automatically.</p>';
 
   // around economic releases
   const evs = await api('/api/stats/events');
@@ -709,9 +720,10 @@ async function loadBreakdown(){
     <td>${dim==='weekday'?dow[+k]??k:esc(k)}</td><td>${v.n}${v.low_sample?' <span class="warn" title="small sample">⚠</span>':''}</td>
     <td>${v.win_rate!=null?(100*v.win_rate).toFixed(0)+'%':'—'}</td>
     <td class="${cls(v.expectancy)}">${money(v.expectancy)}</td>
+    <td class="note">${v.expectancy_ci95?`${money(v.expectancy_ci95[0])} to ${money(v.expectancy_ci95[1])}`:'—'}</td>
     <td class="${cls(v.net_pnl)}">${money(v.net_pnl)}</td>
-    <td class="note">${v.low_sample?'noise-dominated':''}</td></tr>`).join('')
-    || '<tr><td colspan="6" class="note">No closed trades yet.</td></tr>';
+    <td class="note">${esc(v.edge)}</td></tr>`).join('')
+    || '<tr><td colspan="7" class="note">No closed trades yet.</td></tr>';
 }
 $('#a-dim').addEventListener('change', loadBreakdown);
 

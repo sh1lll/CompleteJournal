@@ -36,6 +36,7 @@ class NormalizedExecution:
     order_type: str | None = None
     raw: dict = field(default_factory=dict)
     account: str | None = None  # account named inside the file, when present
+    intended_price: float | None = None  # stop/limit price, when known (slippage)
 
     def validate(self) -> None:
         if self.side not in ("buy", "sell"):
@@ -126,12 +127,13 @@ def ingest(
             conn.execute(
                 """INSERT INTO executions
                    (account_id, source, import_batch, exec_id, order_id, symbol, contract,
-                    side, qty, price, ts_utc, fees, order_type, raw_payload, dedupe_key)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    side, qty, price, ts_utc, fees, order_type, raw_payload, dedupe_key,
+                    intended_price)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (
                     account_id, source, batch_id, ex.exec_id, ex.order_id, ex.symbol,
                     ex.contract, ex.side, ex.qty, ex.price, ex.ts_utc, ex.fees,
-                    ex.order_type, json.dumps(ex.raw, default=str), key,
+                    ex.order_type, json.dumps(ex.raw, default=str), key, ex.intended_price,
                 ),
             )
             new += 1

@@ -383,6 +383,15 @@ def create_app(db_path: str | Path, attachments_root: str | Path | None = None) 
         finally:
             c.close()
 
+    @app.get("/api/stats/slippage")
+    def slippage_stats():
+        from . import stats as statsmod
+        c = conn()
+        try:
+            return statsmod.slippage(c)
+        finally:
+            c.close()
+
     @app.get("/api/stats/events")
     def econ_stats(minutes: int = 5):
         c = conn()
