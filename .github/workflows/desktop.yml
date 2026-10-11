@@ -153,7 +153,8 @@ jobs:
       - name: Checksums (the app verifies downloads against these)
         run: |
           cd artifacts
-          find . -type f \( -name "*.zip" -o -name "*.tar.gz" \) -exec mv {} . \;
+          find . -mindepth 2 -type f \( -name "*.zip" -o -name "*.tar.gz" \) -exec mv {} . \;
+          find . -mindepth 1 -type d -empty -delete   # leave only files for sha256sum and the upload
           sha256sum CompleteJournal-* > SHA256SUMS.txt
           cat SHA256SUMS.txt
       - uses: softprops/action-gh-release@v2
