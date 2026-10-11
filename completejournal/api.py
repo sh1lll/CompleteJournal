@@ -68,6 +68,14 @@ class LivePlatformIn(BaseModel):
     platform: str
 
 
+class EconIn(BaseModel):
+    when: str
+    event: str
+    impact: str = "high"
+    currency: str = "USD"
+    tz: str | None = "America/New_York"
+
+
 class StatusIn(BaseModel):
     status: str
 
@@ -216,7 +224,7 @@ def create_app(db_path: str | Path, attachments_root: str | Path | None = None) 
 
     @app.get("/", response_class=HTMLResponse)
     def index():
-        return resources.files("completejournal").joinpath("web/index.html").read_text()
+        return resources.files("completejournal").joinpath("web/index.html").read_text(encoding="utf-8")
 
     # ----------------------------------------------------------- journal
     @app.post("/api/entries")
@@ -329,6 +337,57 @@ def create_app(db_path: str | Path, attachments_root: str | Path | None = None) 
             return thesesmod.thread(c, entry_id)
         except ValueError as e:
             raise HTTPException(400, str(e))
+        finally:
+            c.close()
+
+    from . import econ as econmod
+
+    @app.get("/api/econ/{date}")
+    def econ_day(date: str, min_impact: str = "low"):
+        c = conn()
+        try:
+            return {"events": econmod.for_session(c, date, min_impact=min_impact),
+                    "trades_near_high_impact": econmod.trades_near_events(c, date)}
+        finally:
+            c.close()
+
+    @app.post("/api/econ/import")
+    async def econ_import(file: UploadFile, tz: str = Form("America/New_York")):
+        data = await file.read()
+        c = conn()
+        try:
+            if (file.filename or "").lower().endswith(".json") or data.lstrip()[:1] == b"[":
+                return econmod.import_ff_json(c, data)
+            return econmod.import_csv(c, data, tz=tz)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+        finally:
+            c.close()
+
+    @app.post("/api/econ/fetch-week")
+    def econ_fetch():
+        c = conn()
+        try:
+            return econmod.fetch_feed(c)
+        finally:
+            c.close()
+
+    @app.post("/api/econ/event")
+    def econ_add(body: EconIn):
+        c = conn()
+        try:
+            return {"id": econmod.add_manual(c, when=body.when, event=body.event, impact=body.impact,
+                                             currency=body.currency, tz=body.tz)}
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+        finally:
+            c.close()
+
+    @app.get("/api/stats/events")
+    def econ_stats(minutes: int = 5):
+        c = conn()
+        try:
+            return econmod.near_vs_away(c, minutes=minutes)
         finally:
             c.close()
 
@@ -616,7 +675,7 @@ def create_app(db_path: str | Path, attachments_root: str | Path | None = None) 
 
     # ---------------------------------------------- phone quick-capture
     def _web(name: str) -> str:
-        return resources.files("completejournal").joinpath(f"web/{name}").read_text()
+        return resources.files("completejournal").joinpath(f"web/{name}").read_text(encoding="utf-8")
 
     @app.get("/capture", response_class=HTMLResponse)
     def capture_page():

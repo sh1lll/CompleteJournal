@@ -52,7 +52,7 @@ def test_screenshot_folder_import(conn, tmp_path):
     shots.mkdir()
     (shots / "esz_entry.png").write_bytes(PNG)
     (shots / "esz_exit.png").write_bytes(PNG + b"2")
-    (shots / "notes.txt").write_text("not an image")
+    (shots / "notes.txt").write_text("not an image", encoding="utf-8")
     root = tmp_path / "att"
 
     res = screenshots.import_folder(conn, root, shots, date="2026-10-09")

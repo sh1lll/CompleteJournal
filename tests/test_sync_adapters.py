@@ -76,7 +76,7 @@ def test_tradovate_reauth_on_401(conn):
 
 
 def test_tradovate_has_no_order_endpoints():
-    src = open(tradovate.__file__).read()
+    src = open(tradovate.__file__, encoding="utf-8").read()
     for forbidden in ("placeorder", "modifyorder", "cancelorder", "liquidate"):
         assert forbidden not in src.lower().replace(" ", "")
 
@@ -128,6 +128,6 @@ def test_projectx_sync_end_to_end(conn):
 
 
 def test_projectx_has_no_order_endpoints():
-    src = open(projectx.__file__).read().lower().replace(" ", "")
+    src = open(projectx.__file__, encoding="utf-8").read().lower().replace(" ", "")
     for forbidden in ("order/place", "order/modify", "order/cancel", "position/close"):
         assert forbidden not in src

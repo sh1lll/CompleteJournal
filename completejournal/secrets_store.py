@@ -36,7 +36,7 @@ def save(name: str, data: dict) -> str:
     d = _dir()
     d.mkdir(parents=True, exist_ok=True)
     f = d / f"secret_{name}.json"
-    f.write_text(blob)
+    f.write_text(blob, encoding="utf-8")
     os.chmod(f, stat.S_IRUSR | stat.S_IWUSR)
     return "private-file"
 
@@ -53,7 +53,7 @@ def load(name: str) -> dict | None:
     f = _dir() / f"secret_{name}.json"
     if f.exists():
         try:
-            return json.loads(f.read_text())
+            return json.loads(f.read_text(encoding="utf-8"))
         except ValueError:
             return None
     return None

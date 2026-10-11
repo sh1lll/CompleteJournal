@@ -81,7 +81,7 @@ def get_key() -> str | None:
         except Exception:
             pass
     if _KEY_FILE.exists():
-        return _KEY_FILE.read_text().strip() or None
+        return _KEY_FILE.read_text(encoding="utf-8").strip() or None
     return None
 
 
@@ -97,7 +97,7 @@ def save_key(key: str) -> str:
         except Exception:
             pass
     _KEY_FILE.parent.mkdir(parents=True, exist_ok=True)
-    _KEY_FILE.write_text(key)
+    _KEY_FILE.write_text(key, encoding="utf-8")
     os.chmod(_KEY_FILE, stat.S_IRUSR | stat.S_IWUSR)  # 0600
     return "private-file"
 

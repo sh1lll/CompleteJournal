@@ -43,7 +43,7 @@ def test_bars_csv_import(conn, tmp_path):
     f = tmp_path / "bars.csv"
     f.write_text("Time,Open,High,Low,Close,Volume\n"
                  "2026-10-09 08:30:00,5000,5002,4999,5001,120\n"
-                 "2026-10-09 08:31:00,5001,5003,5000,5002,98\n")
+                 "2026-10-09 08:31:00,5001,5003,5000,5002,98\n", encoding="utf-8")
     n = bars.import_bars_csv(conn, f, "MES", "1m", tz_offset_minutes=-300)
     assert n == 2
     row = conn.execute("SELECT ts_utc FROM bars ORDER BY ts_utc LIMIT 1").fetchone()

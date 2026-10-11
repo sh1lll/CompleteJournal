@@ -88,7 +88,7 @@ def test_generic_mapping_importer():
 
 def test_generic_importer_warns_not_crashes_on_bad_rows(tmp_path):
     bad = tmp_path / "bad.csv"
-    bad.write_text("Sym,Direction,Lots,FillPx,When\nESZ6,hold,1,100,2026-10-09 09:30:00\n")
+    bad.write_text("Sym,Direction,Lots,FillPx,When\nESZ6,hold,1,100,2026-10-09 09:30:00\n", encoding="utf-8")
     executions, warnings = generic.parse(
         bad, mapping={"contract": "Sym", "side": "Direction", "qty": "Lots",
                       "price": "FillPx", "ts": "When"})

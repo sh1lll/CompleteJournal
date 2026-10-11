@@ -87,8 +87,9 @@ def test_key_file_is_private(monkeypatch, tmp_path):
     monkeypatch.setattr(ai, "_KEY_FILE", tmp_path / "k" / "anthropic_key")
     monkeypatch.setattr(ai, "_keyring", lambda: None)
     assert ai.save_key("sk-test") == "private-file"
-    mode = stat.S_IMODE(os.stat(tmp_path / "k" / "anthropic_key").st_mode)
-    assert mode == 0o600 and ai.get_key() == "sk-test"
+    if os.name != "nt":   # Windows protects it via the per-user profile folder instead
+        assert stat.S_IMODE(os.stat(tmp_path / "k" / "anthropic_key").st_mode) == 0o600
+    assert ai.get_key() == "sk-test"
     ai.delete_key()
     assert ai.get_key() is None
 

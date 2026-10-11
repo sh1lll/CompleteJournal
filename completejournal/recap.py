@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import sqlite3
 
-from . import analytics, behavior, excursions, plan
+from . import analytics, behavior, econ, excursions, plan
 
 
 def _m(v: float) -> str:
@@ -72,6 +72,18 @@ def daily(conn: sqlite3.Connection, date: str) -> dict:
         lines.append("No pre-market plan was written for this session.")
         if trades:
             questions.append("Without a written plan, what was the reason behind the first trade?")
+
+    events = econ.for_session(conn, date, min_impact="high")
+    if events:
+        lines.append("Scheduled high-impact releases: " + "; ".join(
+            f"{e['event']} ({e['currency'] or '—'}) {'all day' if e['all_day'] else e['ts_utc'][11:16] + 'Z'}"
+            for e in events) + ".")
+    for n in econ.trades_near_events(conn, date):
+        when = "after" if n["minutes_from_release"] >= 0 else "before"
+        lines.append(f"Trade #{n['trade_id']} was entered {abs(n['minutes_from_release']):g} min {when} "
+                     f"{n['event']}. [trade:{n['trade_id']}]")
+        questions.append(f"Was trading around {n['event']} part of the plan for trade #{n['trade_id']}, "
+                         f"or a reaction to the move?")
 
     flags = behavior.all_flags(conn)
     for key in ("revenge_reentries", "size_escalation", "overtrading_days"):

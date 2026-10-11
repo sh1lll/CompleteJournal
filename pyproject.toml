@@ -26,3 +26,6 @@ completejournal = ["schema.sql", "web/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# with PYTHONWARNDEFAULTENCODING=1 (set in CI), any file read/write that relies on
+# the OS default encoding fails — Windows' default broke the UI once
+filterwarnings = ["error::EncodingWarning"]

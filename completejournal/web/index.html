@@ -253,6 +253,8 @@ a{color:var(--accent-ink)}
   <div id="a-pvo" class="statgrid"></div>
   <h2>Behavioral flags <span class="note" style="font-weight:400">(review prompts with evidence — not verdicts)</span></h2>
   <div id="a-flags"></div>
+  <h2>Around economic releases</h2>
+  <div id="a-events" class="statgrid"></div>
   <h2>Breakdowns</h2>
   <div class="row"><select id="a-dim"><option value="symbol">By instrument</option><option value="weekday">By weekday</option><option value="hour">By hour (UTC)</option><option value="account">By account</option></select></div>
   <div class="tablebox"><table id="a-bd"><thead><tr><th>Bucket</th><th>n</th><th>Win rate</th><th>Expectancy</th><th>Net P&L</th><th></th></tr></thead><tbody></tbody></table></div>
@@ -277,6 +279,13 @@ a{color:var(--accent-ink)}
   </details>
   <div class="row"><button class="primary" id="i-go">Import</button></div>
   <div id="i-out"></div>
+  <h2>Economic calendar</h2>
+  <p class="note">Scheduled releases (CPI, FOMC, payrolls…) shown on each day and in your recap. Nothing is fetched unless you click.</p>
+  <div class="row"><input type="file" id="ec-file" accept=".csv,.json,.txt"><input id="ec-tz" value="America/New_York" title="Timezone of times in a CSV file"><button class="primary" id="ec-import">Import calendar file</button></div>
+  <div class="row"><button class="ghost" id="ec-fetch">Fetch this week's calendar (public ForexFactory feed)</button></div>
+  <div class="row"><input id="ec-when" placeholder="2026-10-29 14:00 (New York time)"><input id="ec-event" placeholder="Event, e.g. FOMC Statement"><select id="ec-impact"><option>high</option><option>medium</option><option>low</option></select><button class="ghost" id="ec-add">Add event</button></div>
+  <div id="ec-msg" class="note"></div>
+
   <h2>Try it with sample data</h2>
   <p class="note">Loads ten days of clearly labelled sample trades, price bars and journal entries into a separate "Demo (sample data)" account. Removing it never touches your real records.</p>
   <div class="row"><button class="primary" id="d-add">Load demo data</button><button class="primary" id="d-del" style="background:transparent;color:var(--neg);border:1px solid var(--rule)">Remove demo data</button><span id="d-msg" class="note"></span></div>
@@ -486,7 +495,7 @@ async function getAIStatus(){ try{ aiStatus = await api('/api/ai/status'); }catc
 // day review: plan vs actual, recap, similar past entries, optional AI
 $('#s-load').onclick = async () => {
   const d = $('#s-date').value; if(!d) return;
-  const [pva, rc, st] = await Promise.all([api('/api/plan/'+d), api('/api/recap/'+d), getAIStatus()]);
+  const [pva, rc, st, ev] = await Promise.all([api('/api/plan/'+d), api('/api/recap/'+d), getAIStatus(), api('/api/econ/'+d+'?min_impact=medium')]);
   const planHtml = pva.plan
     ? `<div class="card"><div class="meta"><span class="kind">pre-market plan</span><span>#${pva.plan.id}</span><span>written ${esc(pva.plan.written_at.slice(0,16).replace('T',' '))}Z</span></div><div class="body">${renderBody(pva.plan.body_md)}</div></div>`
     : `<p class="note">No pre-market plan for this day. Plans written with the "Plan template" button can be checked automatically.</p>`;
@@ -506,7 +515,11 @@ $('#s-load').onclick = async () => {
   const aiHtml = st.configured
     ? `<div class="row"><button class="ghost" id="s-ai">Write an AI summary of this day</button><span class="note" id="s-ai-msg"></span></div><div id="s-ai-out"></div>`
     : `<p class="note">Optional: add an Anthropic API key in Settings for written AI summaries. Everything above works without it.</p>`;
-  $('#s-out').innerHTML = `
+  const evHtml = ev.events.length
+    ? '<div class="card"><div class="meta"><span class="kind">economic calendar</span></div>' + ev.events.map(e =>
+        `<div><strong style="color:${e.impact==='high'?'var(--neg)':'var(--muted)'}">${esc(e.impact)}</strong> · ${e.all_day?'all day':esc(new Date(e.ts_utc).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}))} · ${esc(e.currency||'')} ${esc(e.event)}${e.forecast?` <span class="note">(forecast ${esc(e.forecast)}${e.actual?`, actual ${esc(e.actual)}`:''})</span>`:''}</div>`).join('') + '</div>'
+    : '';
+  $('#s-out').innerHTML = evHtml + `
     <div class="split">
       <div><h3>The plan</h3>${planHtml}${rules}</div>
       <div><h3>What happened</h3>${tradesHtml}${reflections}</div>
@@ -671,6 +684,14 @@ async function loadAnalytics(){
     fhtml += `<p class="note">After ${st.k}+ losses: expectancy ${money(st.after_k_losses.expectancy)} (n=${st.after_k_losses.n}) · after ${st.k}+ wins: ${money(st.after_k_wins.expectancy)} (n=${st.after_k_wins.n}) · overall: ${money(st.overall.expectancy)} (n=${st.overall.n}). ${esc(st.note)}</p>`;
   }
   $('#a-flags').innerHTML = fhtml;
+
+  // around economic releases
+  const evs = await api('/api/stats/events');
+  const tile = (l, q) => `<div class="stat"><div class="v">${q.n}<span class="note" style="font-size:.8rem"> · ${money(q.expectancy)}/trade</span></div><div class="l">${l}</div></div>`;
+  $('#a-events').innerHTML = (evs.near_high_impact.n || evs.away.n)
+    ? tile(`Within ${evs.window_minutes} min of high-impact news`, evs.near_high_impact) + tile('Away from news', evs.away)
+      + `<div class="note" style="grid-column:1/-1">${esc(evs.note)}. Import an economic calendar on the Import screen to fill this in.</div>`
+    : '<p class="note">Import an economic calendar (Import screen) to compare trades near releases with the rest.</p>';
 
   // breakdowns
   loadBreakdown();
@@ -983,6 +1004,22 @@ async function openThesis(id){
     await api(`/api/theses/${id}/status`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({status: b.dataset.st})}); openThesis(id);
   });
 }
+
+// economic calendar
+const ecMsg = (t, warn) => { $('#ec-msg').innerHTML = warn ? `<span class="warn">${esc(t)}</span>` : esc(t); };
+const ecResult = r => r.error ? ecMsg(r.error, true) : ecMsg(`Added ${r.added} event(s)` + (r.skipped && r.skipped.length ? ` · skipped ${r.skipped.length}: ${r.skipped.slice(0,3).join('; ')}` : '') + '.');
+$('#ec-import').onclick = async () => {
+  const f = $('#ec-file').files[0]; if(!f){ ecMsg('Choose a file first.', true); return; }
+  const fd = new FormData(); fd.append('file', f); fd.append('tz', $('#ec-tz').value || 'America/New_York');
+  try { ecResult(await api('/api/econ/import', {method:'POST', body: fd})); } catch(e){ ecMsg(e.message, true); }
+};
+$('#ec-fetch').onclick = async () => { ecMsg('Fetching…'); ecResult(await api('/api/econ/fetch-week', {method:'POST'})); };
+$('#ec-add').onclick = async () => {
+  try { await api('/api/econ/event', {method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({when: $('#ec-when').value, event: $('#ec-event').value, impact: $('#ec-impact').value})});
+        ecMsg('Event added.'); $('#ec-event').value=''; }
+  catch(e){ ecMsg(e.message, true); }
+};
 
 // demo data
 $('#d-add').onclick = async () => {

@@ -19,7 +19,7 @@ def connect(path: str | Path) -> sqlite3.Connection:
 
 
 def _migrate(conn: sqlite3.Connection) -> None:
-    schema = resources.files("completejournal").joinpath("schema.sql").read_text()
+    schema = resources.files("completejournal").joinpath("schema.sql").read_text(encoding="utf-8")
     conn.executescript(schema)
     conn.execute(
         "INSERT INTO meta(key, value) VALUES ('schema_version', ?) "

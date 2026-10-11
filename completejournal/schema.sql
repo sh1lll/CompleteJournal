@@ -201,6 +201,22 @@ CREATE TABLE IF NOT EXISTS bars (
     PRIMARY KEY (symbol, resolution, ts_utc)
 );
 
+-- ----------------------------------------------------------- econ_events
+-- Scheduled economic releases (CPI, FOMC, NFP...). Imported or entered by
+-- the trader; source recorded. Context only — never used to grade trades.
+CREATE TABLE IF NOT EXISTS econ_events (
+    id       INTEGER PRIMARY KEY,
+    ts_utc   TEXT NOT NULL,
+    all_day  INTEGER NOT NULL DEFAULT 0,
+    currency TEXT,
+    event    TEXT NOT NULL,
+    impact   TEXT CHECK (impact IN ('low','medium','high','holiday') OR impact IS NULL),
+    actual   TEXT, forecast TEXT, previous TEXT,
+    source   TEXT NOT NULL,
+    UNIQUE (ts_utc, currency, event)
+);
+CREATE INDEX IF NOT EXISTS ix_econ_ts ON econ_events(ts_utc);
+
 -- -------------------------------------------------------------- capture_log
 -- Phone captures are retried until acknowledged (possibly after being
 -- offline); client_id makes each capture land exactly once.

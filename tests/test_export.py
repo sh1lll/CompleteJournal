@@ -35,7 +35,7 @@ def test_markdown_mirror(conn, tmp_path):
     n = export.export_markdown(conn, tmp_path)
     assert n == 1
     (f,) = list(tmp_path.glob("*.md"))
-    text = f.read_text()
+    text = f.read_text(encoding="utf-8")
     assert f.name.startswith("2026-10-09-0001-")
     assert '"trade:1"' in text and "setup/open-drive" in text
     assert "# MES open drive" in text
@@ -51,9 +51,9 @@ def test_full_export_round_trippable(conn, tmp_path):
     assert counts["entries"] == 1 and counts["entry_versions"] == 2
     assert counts["markdown_entries"] == 1
     # executions CSV carries raw payloads + account names
-    head = (tmp_path / "executions.csv").read_text().splitlines()[0]
+    head = (tmp_path / "executions.csv").read_text(encoding="utf-8").splitlines()[0]
     assert "raw_payload" in head and "account_name" in head
-    entries = json.loads((tmp_path / "entries.json").read_text())
+    entries = json.loads((tmp_path / "entries.json").read_text(encoding="utf-8"))
     assert entries[0]["author"] == "trader"
-    versions = json.loads((tmp_path / "entry_versions.json").read_text())
+    versions = json.loads((tmp_path / "entry_versions.json").read_text(encoding="utf-8"))
     assert versions[0]["body_md"] == "Clean long off the open."

@@ -116,7 +116,7 @@ def test_double_import_across_formats_warns(conn):
     import tempfile, os
     csv = ("ContractName,EnteredAt,ExitedAt,EntryPrice,ExitPrice,Size,Type\n"
            "MESM6,06/11/2026 07:45:21 -06:00,06/11/2026 07:46:21 -06:00,7300.5,7303.75,1,Long\n")
-    with tempfile.NamedTemporaryFile("w", suffix=".csv", delete=False) as f:
+    with tempfile.NamedTemporaryFile("w", suffix=".csv", delete=False, encoding="utf-8") as f:
         f.write(csv)
     try:
         res = auto.import_file(conn, f.name, account_label="X")
@@ -127,7 +127,7 @@ def test_double_import_across_formats_warns(conn):
 
 def test_unknown_export_gives_actionable_error(tmp_path):
     f = tmp_path / "mystery.csv"
-    f.write_text("foo,bar,baz\n1,2,3\n")
+    f.write_text("foo,bar,baz\n1,2,3\n", encoding="utf-8")
     with pytest.raises(ValueError, match="Columns found: foo, bar, baz"):
         auto.parse_file(f)
 
@@ -136,7 +136,7 @@ def test_generic_fills_autodetected_without_mapping(conn, tmp_path):
     f = tmp_path / "anybroker.csv"
     f.write_text("Ticker,Direction,Contracts,Execution Price,Execution Time,Fee\n"
                  "MNQZ6,BOT,2,21000.25,2026-10-09 09:31:00,0.52\n"
-                 "MNQZ6,SLD,2,21010.25,2026-10-09 09:40:00,0.52\n")
+                 "MNQZ6,SLD,2,21010.25,2026-10-09 09:40:00,0.52\n", encoding="utf-8")
     res = auto.import_file(conn, f, account_label="Any", tz="America/Chicago")
     assert res["detected_format"] == "generic_fills"
     (t,) = _trades(conn)
@@ -147,7 +147,7 @@ def test_generic_fills_autodetected_without_mapping(conn, tmp_path):
 def test_generic_round_trips_autodetected(conn, tmp_path):
     f = tmp_path / "journal_export.csv"
     f.write_text("Symbol,Side,Qty,Open Time,Close Time,Open Price,Close Price\n"
-                 "GCZ6,Short,1,2026-10-09T13:30:00Z,2026-10-09T13:50:00Z,2650.0,2645.0\n")
+                 "GCZ6,Short,1,2026-10-09T13:30:00Z,2026-10-09T13:50:00Z,2650.0,2645.0\n", encoding="utf-8")
     res = auto.import_file(conn, f, account_label="Gold")
     assert res["detected_format"] == "generic_trips"
     (t,) = _trades(conn)
