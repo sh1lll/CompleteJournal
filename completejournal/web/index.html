@@ -46,6 +46,14 @@ mark{background:transparent;color:var(--accent-ink);font-weight:700}
 .stat .v{font-size:1.3rem;font-variant-numeric:tabular-nums}
 .stat .l{font-family:var(--mono);font-size:.62rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
 [hidden]{display:none!important}
+.calgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:.8rem}
+.calgrid .dow{font-family:var(--mono);font-size:.6rem;text-transform:uppercase;color:var(--muted);text-align:center;padding:.2rem 0}
+.cal-day{border:1px solid var(--rule);border-radius:6px;min-height:62px;padding:.3rem .4rem;font-size:.72rem;cursor:pointer;background:var(--card)}
+.cal-day.empty{visibility:hidden}
+.cal-day .d{font-family:var(--mono);color:var(--muted)}
+.cal-day .p{font-variant-numeric:tabular-nums;font-weight:700}
+.cal-day .e{color:var(--accent-ink)}
+.card .body img{max-width:100%;border:1px solid var(--rule);border-radius:6px;display:block;margin:.4rem 0}
 a{color:var(--accent-ink)}
 </style>
 </head>
@@ -56,6 +64,7 @@ a{color:var(--accent-ink)}
     <button data-v="write" class="active">Write</button>
     <button data-v="journal">Journal</button>
     <button data-v="session">Session</button>
+    <button data-v="calendar">Calendar</button>
     <button data-v="trades">Trades</button>
     <button data-v="analytics">Analytics</button>
     <button data-v="import">Import</button>
@@ -96,6 +105,17 @@ a{color:var(--accent-ink)}
   <h2>Session timeline</h2>
   <div class="row"><input type="date" id="s-date"><button class="primary" id="s-load">Load day</button></div>
   <div id="s-out"></div>
+</section>
+
+<section id="v-calendar" hidden>
+  <h2>Calendar</h2>
+  <p class="note">P&L and writing density together: where the money went <em>and</em> where the thinking happened.</p>
+  <div class="row" style="align-items:center">
+    <button id="c-prev" class="primary" style="flex:0;min-width:44px">‹</button>
+    <strong id="c-label" style="flex:0;min-width:140px;text-align:center"></strong>
+    <button id="c-next" class="primary" style="flex:0;min-width:44px">›</button>
+  </div>
+  <div id="c-grid" class="calgrid"></div>
 </section>
 
 <section id="v-trades" hidden>
@@ -139,6 +159,9 @@ const api = async (path, opts) => {
 };
 const esc = s => (s??'').toString().replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const money = v => v==null?'—':(v<0?'-':'')+'$'+Math.abs(v).toFixed(2);
+// plain text with inline attachment images (strict pattern: internal ids only)
+const renderBody = s => esc(s).replace(/!\[([^\]]*)\]\((\/api\/attachments\/\d+)\)/g,
+  (_, alt, url) => `<img src="${url}" alt="${alt}" loading="lazy">`);
 const cls = v => v>0?'pos':v<0?'neg':'';
 
 // nav
@@ -149,7 +172,53 @@ document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>{
   if(v==='journal') loadJournal();
   if(v==='trades') loadTrades();
   if(v==='analytics') loadAnalytics();
+  if(v==='calendar') loadCalendar();
 });
+
+// image paste -> attachment upload -> markdown reference in the textarea
+$('#w-body').addEventListener('paste', async ev => {
+  const item = [...(ev.clipboardData?.items||[])].find(i=>i.type.startsWith('image/'));
+  if(!item) return;
+  ev.preventDefault();
+  const blob = item.getAsFile();
+  const fd = new FormData();
+  fd.append('file', blob, 'pasted.png');
+  try{
+    const res = await api('/api/attachments', {method:'POST', body: fd});
+    const ta = $('#w-body'), pos = ta.selectionStart;
+    const md = `![chart](/api/attachments/${res.id})`;
+    ta.value = ta.value.slice(0,pos) + md + ta.value.slice(pos);
+    $('#w-msg').textContent = `Image attached (#${res.id}).`;
+  }catch(e){ $('#w-msg').textContent = 'Image upload failed: '+e.message; }
+});
+
+// calendar
+let calYM = (()=>{const d=new Date();return [d.getFullYear(), d.getMonth()];})();
+$('#c-prev').onclick=()=>{calYM[1]--; if(calYM[1]<0){calYM[1]=11;calYM[0]--;} loadCalendar();};
+$('#c-next').onclick=()=>{calYM[1]++; if(calYM[1]>11){calYM[1]=0;calYM[0]++;} loadCalendar();};
+async function loadCalendar(){
+  const [y,m] = calYM;
+  const data = await api('/api/calendar');
+  $('#c-label').textContent = new Date(y,m,1).toLocaleString('en',{month:'long',year:'numeric'});
+  const first = new Date(Date.UTC(y,m,1)).getUTCDay();
+  const days = new Date(y,m+1,0).getDate();
+  let html = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d=>`<div class="dow">${d}</div>`).join('');
+  for(let i=0;i<first;i++) html += '<div class="cal-day empty"></div>';
+  for(let d=1;d<=days;d++){
+    const key = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const v = data[key]||{};
+    html += `<div class="cal-day" data-date="${key}"><div class="d">${d}</div>`+
+      (v.net_pnl!=null?`<div class="p ${cls(v.net_pnl)}">${money(v.net_pnl)}</div>`:'')+
+      (v.trades?`<div>${v.trades} trade${v.trades>1?'s':''}</div>`:'')+
+      (v.entries?`<div class="e">✎ ${v.entries}</div>`:'')+'</div>';
+  }
+  $('#c-grid').innerHTML = html;
+  document.querySelectorAll('.cal-day[data-date]').forEach(el=>el.onclick=()=>{
+    $('#s-date').value = el.dataset.date;
+    document.querySelector('#nav button[data-v="session"]').click();
+    $('#s-load').click();
+  });
+}
 
 // write
 $('#w-save').onclick = async () => {
@@ -172,7 +241,7 @@ function entryCard(e, snippet){
     <span>written ${esc((e.written_at||'').slice(0,16).replace('T',' '))}Z</span>
     ${e.about_date?`<span>about ${esc(e.about_date)}</span>`:''}
   </div>${e.title?`<strong>${esc(e.title)}</strong>`:''}
-  <div class="body">${snippet ?? esc(e.body_md||'')}</div></div>`;
+  <div class="body">${snippet ?? renderBody(e.body_md||'')}</div></div>`;
 }
 async function loadJournal(){
   const q = $('#j-q').value.trim();

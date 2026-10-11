@@ -11,7 +11,9 @@ from fastapi import FastAPI, HTTPException, UploadFile, Form
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 
-from . import analytics, db as dbmod, journal, reconstruction
+from fastapi.responses import Response
+
+from . import analytics, attachments as attmod, db as dbmod, journal, reconstruction
 from .importers import base as impbase
 from .importers.platforms import REGISTRY
 
@@ -37,8 +39,9 @@ class AddendumIn(BaseModel):
     body_md: str
 
 
-def create_app(db_path: str | Path) -> FastAPI:
+def create_app(db_path: str | Path, attachments_root: str | Path | None = None) -> FastAPI:
     app = FastAPI(title="Complete Journal", version="0.1.0")
+    att_root = Path(attachments_root) if attachments_root else Path(str(db_path) + ".attachments")
 
     def conn() -> sqlite3.Connection:
         # SQLite per-request connection: simple and safe for a single user.
@@ -239,6 +242,32 @@ def create_app(db_path: str | Path) -> FastAPI:
                 "FROM entries WHERE deleted_at IS NULL GROUP BY d"):
                 days.setdefault(r["d"], {})["entries"] = r["n"]
             return days
+        finally:
+            c.close()
+
+    # -------------------------------------------------------- attachments
+    @app.post("/api/attachments")
+    async def upload_attachment(file: UploadFile, entry_id: int | None = Form(None)):
+        c = conn()
+        try:
+            data = await file.read()
+            return attmod.store(c, att_root, data, filename=file.filename,
+                                media_type=file.content_type, entry_id=entry_id)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+        finally:
+            c.close()
+
+    @app.get("/api/attachments/{attachment_id}")
+    def get_attachment(attachment_id: int):
+        c = conn()
+        try:
+            data, meta = attmod.load(c, att_root, attachment_id)
+            return Response(content=data, media_type=meta["media_type"] or "application/octet-stream")
+        except KeyError as e:
+            raise HTTPException(404, str(e))
+        except (ValueError, FileNotFoundError) as e:
+            raise HTTPException(500, str(e))
         finally:
             c.close()
 

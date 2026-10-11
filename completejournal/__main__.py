@@ -23,7 +23,8 @@ from .importers.platforms import REGISTRY
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="completejournal")
-    p.add_argument("command", choices=["init", "import", "rebuild", "stats", "reconcile", "write", "search", "serve"])
+    p.add_argument("command", choices=["init", "import", "rebuild", "stats", "reconcile", "write", "search", "serve", "export"])
+    p.add_argument("--out", default="export", help="output directory for export")
     p.add_argument("--db", default="journal.db")
     p.add_argument("--file")
     p.add_argument("--format", dest="fmt", choices=sorted(REGISTRY))
@@ -73,6 +74,10 @@ def main(argv: list[str] | None = None) -> int:
         if not args.query:
             p.error("search requires --query")
         print(json.dumps(journal.search(conn, args.query), indent=2))
+    elif args.command == "export":
+        from . import export
+        counts = export.export_full(conn, args.out)
+        print(json.dumps(counts, indent=2))
     elif args.command == "serve":
         import uvicorn
         from .api import create_app
