@@ -11,7 +11,7 @@ Complete Journal is — first and foremost — a *journal*: a persistent, search
 
 ## Status
 
-Phase 0 (research & assessment) ✅ · Phase 1 (MVP core) 🔄 — see `ROADMAP.md`.
+Phase 0 research ✅ · Phase 1 journal + capture ✅ · Phase 2 sync + context ~80% · Phase 3 analytics ~70% · Phase 4 AI ⏳ · Phase 5 desktop installer ⏳ — see `ROADMAP.md`.
 
 ## Quick start
 
