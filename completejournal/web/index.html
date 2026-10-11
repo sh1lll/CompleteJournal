@@ -832,7 +832,13 @@ async function loadUpdates(){
     $('#ub-yes').onclick = () => updatePref(true); $('#ub-no').onclick = () => updatePref(false);
   } else if(u.update_available){
     ban.hidden = false;
-    ban.innerHTML = `Version ${esc(u.latest)} is available (you have ${esc(u.current)}). <a href="${esc(u.download_url)}" target="_blank" rel="noopener">Download</a> · your journal is kept when you install it.`;
+    ban.innerHTML = `Version ${esc(u.latest)} is available (you have ${esc(u.current)}). <button class="ghost" id="ub-dl">Download and verify</button> <a href="${esc(u.release_url || u.download_url)}" target="_blank" rel="noopener">release notes</a> · your journal is kept when you install it. <span id="ub-msg"></span>`;
+    $('#ub-dl').onclick = async () => {
+      $('#ub-msg').textContent = 'Downloading…';
+      try { const r = await api('/api/updates/download', {method:'POST'});
+            $('#ub-msg').textContent = `Verified ✓ saved to ${r.path}. ${r.next_step}`; }
+      catch(e){ $('#ub-msg').innerHTML = `<span class="warn">${esc(e.message)}</span>`; }
+    };
   } else ban.hidden = true;
   $('#upd-box').innerHTML = `You have version ${esc(u.current)}. Update checks are <strong>${u.preference==='on'?'on':'off'}</strong>. `
     + (u.preference==='on' ? `<button class="ghost" id="up-now">Check now</button> <button class="ghost" id="up-off">Turn off</button>` : `<button class="ghost" id="up-on">Turn on</button>`)

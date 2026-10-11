@@ -66,3 +66,35 @@ def test_parse_version():
     assert updates.parse_version("0.2") == (0, 2, 0)
     assert updates.parse_version("v1.10.0") > updates.parse_version("v1.9.9")
     assert updates.parse_version("nonsense") is None
+
+
+def _release_with_assets():
+    r = rel("v99.0.0")
+    r["assets"].append({"name": "SHA256SUMS.txt", "browser_download_url": "https://dl/sums"})
+    return r
+
+
+def test_verified_download(tmp_path, monkeypatch):
+    import hashlib
+    monkeypatch.setattr(updates.sys, "platform", "linux")
+    payload = b"app-bytes"
+    sums = f"{hashlib.sha256(payload).hexdigest()}  CompleteJournal-linux.tar.gz\n".encode()
+    files = {"https://dl/sums": sums, "https://dl/linux": payload}
+    out = updates.download_update(tmp_path, fetch=lambda repo: _release_with_assets(),
+                                  get_bytes=lambda url: files[url])
+    assert out["verified"] and (tmp_path / "CompleteJournal-linux.tar.gz").read_bytes() == payload
+
+
+def test_tampered_download_is_rejected(tmp_path, monkeypatch):
+    monkeypatch.setattr(updates.sys, "platform", "linux")
+    files = {"https://dl/sums": b"0" * 64 + b"  CompleteJournal-linux.tar.gz\n", "https://dl/linux": b"evil"}
+    with pytest.raises(ValueError, match="failed verification"):
+        updates.download_update(tmp_path, fetch=lambda repo: _release_with_assets(),
+                                get_bytes=lambda url: files[url])
+    assert not list(tmp_path.iterdir())
+
+
+def test_release_without_checksums_is_refused(tmp_path, monkeypatch):
+    monkeypatch.setattr(updates.sys, "platform", "linux")
+    with pytest.raises(ValueError, match="no checksum file"):
+        updates.download_update(tmp_path, fetch=lambda repo: rel("v99.0.0"), get_bytes=lambda url: b"")

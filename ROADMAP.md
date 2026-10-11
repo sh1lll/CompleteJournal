@@ -100,19 +100,24 @@ Breakdowns with n + confidence intervals · MAE/MFE · slippage · behavioral fl
 | Phone quick-capture (paired, least-privilege, offline queue, installable) | ✅ | browser-verified incl. offline → reconnect |
 | Live connections: Tradovate WebSocket + ProjectX SignalR | ✅ code | 🚩 confirmed against scripted servers + packaged app; first live run by an account holder |
 
-## Known gaps (audited 2026-10-11) — buildable without user input
+## Gap closure (2026-10-11) ✅
 
-- Journal UI: edit an existing entry, add an addendum ("what I learned later"), view version history, add/remove tags — APIs exist, no screens yet
-- Thesis threads view (thesis → intraday updates → trades → outcome)
-- Economic calendar on sessions
-- Bootstrap confidence intervals on breakdowns; slippage vs. intended price
-- Rich-text (WYSIWYG) editor — current editor is markdown + preview
+| Former gap | Status |
+|---|---|
+| Edit entries (versioned), "what I learned later" addenda, version history, tags, explicit unlink, backlinks — on an entry page | ✅ browser-verified |
+| Thesis threads (Theses tab; outcome open/confirmed/invalidated/mixed) | ✅ browser-verified |
+| Economic calendar (CSV / ForexFactory-style JSON / one-click weekly feed / manual) in Day review, recap and analytics | ✅ |
+| Confidence ranges (Wilson, bootstrap) + plain-words edge verdict; slippage where exports record stop/limit prices | ✅ |
+| Editor: formatting toolbar + shortcuts over portable markdown | ✅ — decision: no WYSIWYG engine; markdown stays exportable and diff-able (review) |
+| Windows/macOS builds run on GitHub | ✅ all three green: tests, build, launch smoke test, package (first Windows run caught a real UTF-8 crash — fixed and guarded) |
+| Code signing | ✅ ready — signs automatically once certificates are added as secrets (docs/SIGNING.md) |
+| Updates | ✅ opt-in check + one-click download verified against release SHA256SUMS; fully automatic install needs signing |
 
-## Needs the outside world
+## Still requires the outside world (cannot be done from here)
 
-- First live run of Tradovate / ProjectX connections and AI by someone with accounts/keys
-- First run of the Windows and macOS builds (GitHub Actions on main or a v* tag)
-- Code signing certificates (Apple ~$99/yr; Windows ~$100–400/yr) → then automatic install of updates
+- 🚩 First live run of Tradovate / ProjectX connections and AI by someone holding accounts/keys (all paths tested against simulated servers and the real SDK request shape)
+- 🚩 Signing certificates (Apple ~$99/yr, Windows ~$100–400/yr) — a purchase decision
+- 🚩 First published release (push a `v*` tag) — a publishing decision
 
 ## Deferred / open items
 

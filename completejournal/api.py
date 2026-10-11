@@ -674,6 +674,20 @@ def create_app(db_path: str | Path, attachments_root: str | Path | None = None) 
         finally:
             c.close()
 
+    @app.post("/api/updates/download")
+    def updates_download():
+        try:
+            info = updmod.download_update(Path(str(db_path)).resolve().parent / "updates")
+        except ValueError as e:
+            raise HTTPException(409, str(e))
+        except Exception as e:
+            raise HTTPException(502, f"could not download the update: {e}")
+        try:
+            updmod.reveal(info["path"])
+        except Exception:
+            pass
+        return info
+
     @app.post("/api/updates/check")
     def updates_check_now():
         c = conn()

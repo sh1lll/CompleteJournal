@@ -29,6 +29,9 @@ jobs:
           - os: ubuntu-latest
             artifact: CompleteJournal-linux
     runs-on: ${{ matrix.os }}
+    env:
+      HAS_WIN_CERT: ${{ secrets.WIN_CERT_PFX != '' }}
+      HAS_MAC_CERT: ${{ secrets.MACOS_CERT_P12 != '' }}
     defaults:
       run:
         shell: bash
@@ -53,6 +56,45 @@ jobs:
 
       - name: Build app
         run: pyinstaller packaging/completejournal.spec --noconfirm
+
+      # ---- code signing: runs only when the certificates are configured as
+      # repository secrets; otherwise builds stay unsigned (first-launch warning)
+      - name: Sign (Windows)
+        if: runner.os == 'Windows' && env.HAS_WIN_CERT == 'true'
+        env:
+          WIN_CERT_PFX: ${{ secrets.WIN_CERT_PFX }}
+          WIN_CERT_PASSWORD: ${{ secrets.WIN_CERT_PASSWORD }}
+        run: |
+          echo "$WIN_CERT_PFX" | base64 -d > "$RUNNER_TEMP/cert.pfx"
+          SIGNTOOL=$(ls "/c/Program Files (x86)/Windows Kits/10/bin/"*/x64/signtool.exe | sort | tail -1)
+          "$SIGNTOOL" sign //f "$RUNNER_TEMP/cert.pfx" //p "$WIN_CERT_PASSWORD" //fd sha256 \
+            //tr http://timestamp.digicert.com //td sha256 dist/CompleteJournal/CompleteJournal.exe
+          rm -f "$RUNNER_TEMP/cert.pfx"
+
+      - name: Sign and notarize (macOS)
+        if: runner.os == 'macOS' && env.HAS_MAC_CERT == 'true'
+        env:
+          MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+          MACOS_SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: |
+          KC="$RUNNER_TEMP/build.keychain-db"; KPW=$(uuidgen)
+          echo "$MACOS_CERT_P12" | base64 -d > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$KPW" "$KC"
+          security set-keychain-settings -lut 21600 "$KC"
+          security unlock-keychain -p "$KPW" "$KC"
+          security import "$RUNNER_TEMP/cert.p12" -P "$MACOS_CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KC"
+          security list-keychain -d user -s "$KC"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KPW" "$KC"
+          codesign --deep --force --options runtime --timestamp --sign "$MACOS_SIGN_IDENTITY" "dist/Complete Journal.app"
+          ditto -c -k --keepParent "dist/Complete Journal.app" "$RUNNER_TEMP/notarize.zip"
+          xcrun notarytool submit "$RUNNER_TEMP/notarize.zip" --apple-id "$APPLE_ID" \
+            --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD" --wait
+          xcrun stapler staple "dist/Complete Journal.app"
+          rm -f "$RUNNER_TEMP/cert.p12"
 
       - name: Smoke test the built app
         run: |
@@ -108,7 +150,15 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
+      - name: Checksums (the app verifies downloads against these)
+        run: |
+          cd artifacts
+          find . -type f \( -name "*.zip" -o -name "*.tar.gz" \) -exec mv {} . \;
+          sha256sum CompleteJournal-* > SHA256SUMS.txt
+          cat SHA256SUMS.txt
       - uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/**/*
+          files: |
+            artifacts/CompleteJournal-*
+            artifacts/SHA256SUMS.txt
           generate_release_notes: true
