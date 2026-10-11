@@ -106,4 +106,6 @@ def test_api_works_fully_without_ai(tmp_path, monkeypatch):
     assert c.get("/api/plan/2026-10-09").status_code == 200
     assert c.get("/api/reports/week/2026-10-09").json()["kind"] == "week"
     r = c.post("/api/ai/summary/2026-10-09")
-    assert r.status_code == 409 and "key" in r.json()["detail"].lower()
+    # off either way: no key saved, or the optional AI package not installed
+    detail = r.json()["detail"].lower()
+    assert r.status_code == 409 and ("key" in detail or "ai extras not installed" in detail)
