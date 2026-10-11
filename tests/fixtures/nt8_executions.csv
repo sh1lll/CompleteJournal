@@ -1,0 +1,3 @@
+Instrument,Action,Quantity,Price,Time,ID,E/X,Position,Order ID,Commission,Account
+ES 12-26,Buy,1,6010.25,10/9/2026 9:31:02 AM,abc123,Entry,1 L,nt-ord-1,2.09,Sim101
+ES 12-26,Sell,1,6012.00,10/9/2026 9:40:11 AM,abc124,Exit,-,nt-ord-2,2.09,Sim101

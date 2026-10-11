@@ -1,0 +1,1087 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Complete Journal</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%276%27 fill=%27%231f6f54%27/%3E%3Cpath d=%27M9 8h11a3 3 0 0 1 3 3v13H12a3 3 0 0 1-3-3z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%272%27/%3E%3Cpath d=%27M13 13h6M13 17h6%27 stroke=%27white%27 stroke-width=%272%27/%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#faf8f4; --fg:#26231d; --muted:#6e675c; --rule:#ddd6c8; --card:#f1ede3;
+  --accent:#1f6f54; --accent-ink:#17543f; --pos:#1f6f54; --neg:#9d3b2d;
+  --body:Georgia,'Source Serif 4',serif; --mono:ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#191714; --fg:#e8e3d8; --muted:#a39a8a; --rule:#3a362e; --card:#221f1a;
+  --accent:#5db897; --accent-ink:#7fcbab; --pos:#5db897; --neg:#d06a57; color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.55}
+header{display:flex;flex-wrap:wrap;gap:.6rem;align-items:baseline;padding:1rem 16px;border-bottom:2px solid var(--rule)}
+header h1{font-size:1.15rem;margin:0 1rem 0 0}
+nav{display:flex;flex-wrap:wrap;gap:.4rem}
+nav button{font-family:var(--mono);font-size:.72rem;letter-spacing:.05em;border:1px solid var(--rule);background:transparent;color:var(--fg);border-radius:999px;padding:.35em .9em;cursor:pointer}
+nav button.active{border-color:var(--accent);color:var(--accent-ink)}
+main{max-width:980px;margin:0 auto;padding:1.2rem 16px 4rem}
+h2{font-size:1.2rem;margin:1.4rem 0 .6rem}
+textarea,input,select{font:inherit;color:var(--fg);background:var(--card);border:1px solid var(--rule);border-radius:6px;padding:.5rem .7rem;width:100%}
+textarea{min-height:200px;font-size:1.02rem;line-height:1.6;resize:vertical}
+.row{display:flex;flex-wrap:wrap;gap:.6rem;margin:.6rem 0}
+.row>*{flex:1;min-width:140px}
+button.primary{background:var(--accent);color:#fff;border:0;border-radius:6px;padding:.55rem 1.2rem;font:inherit;cursor:pointer}
+.card{background:var(--card);border:1px solid var(--rule);border-radius:8px;padding:.9rem 1.1rem;margin:.7rem 0}
+.card .meta{font-family:var(--mono);font-size:.68rem;color:var(--muted);display:flex;gap:.8rem;flex-wrap:wrap;margin-bottom:.35rem}
+.card .body{white-space:pre-wrap}
+.kind{color:var(--accent-ink)}
+.addendum{border-left:3px solid var(--rule);margin-top:.6rem;padding:.3rem .8rem;font-size:.92rem}
+.addendum .meta{color:var(--muted);font-family:var(--mono);font-size:.65rem}
+table{border-collapse:collapse;width:100%;font-size:.85rem}
+th{font-family:var(--mono);font-size:.65rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);text-align:left;padding:.45rem .6rem;border-bottom:2px solid var(--rule)}
+td{padding:.4rem .6rem;border-bottom:1px solid var(--rule);font-variant-numeric:tabular-nums}
+.pos{color:var(--pos)} .neg{color:var(--neg)}
+.tablebox{overflow-x:auto}
+.note{font-size:.85rem;color:var(--muted)}
+.warn{color:var(--neg);font-size:.85rem}
+mark{background:transparent;color:var(--accent-ink);font-weight:700}
+.statgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.7rem;margin:.8rem 0}
+.stat{background:var(--card);border:1px solid var(--rule);border-radius:8px;padding:.7rem .9rem}
+.stat .v{font-size:1.3rem;font-variant-numeric:tabular-nums}
+.stat .l{font-family:var(--mono);font-size:.62rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+[hidden]{display:none!important}
+.ghost{background:transparent;color:var(--accent-ink);border:1px solid var(--rule);border-radius:6px;padding:.5rem 1rem;font:inherit;cursor:pointer}
+.ghost-link{align-self:center;color:var(--accent-ink);font-size:.9rem;flex:0 1 auto!important;min-width:0!important}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:1rem;align-items:start}
+.split>*{min-width:0}
+@media (max-width:760px){.split{grid-template-columns:1fr}}
+.rule-ok{color:var(--pos)} .rule-bad{color:var(--neg)}
+.ai-card{border:1px dashed var(--accent);border-radius:8px;padding:.9rem 1.1rem;margin:.7rem 0}
+.ai-card .meta{font-family:var(--mono);font-size:.66rem;color:var(--accent-ink);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.4rem}
+.cite{font-family:var(--mono);font-size:.78em;color:var(--accent-ink)}
+.sim{font-size:.88rem}
+.sim .why{font-family:var(--mono);font-size:.68rem;color:var(--muted)}
+h3{font-size:1rem;margin:1.2rem 0 .4rem}
+.toolbar{display:flex;flex-wrap:wrap;gap:4px;margin:.4rem 0}
+.toolbar button{font-family:var(--mono);font-size:.78rem;min-width:2.1rem;padding:.25rem .5rem;border:1px solid var(--rule);background:var(--card);color:var(--fg);border-radius:5px;cursor:pointer}
+.toolbar button:hover{border-color:var(--accent)}
+.open-entry{cursor:pointer}
+.open-entry:hover{border-color:var(--accent)}
+.chip{display:inline-flex;align-items:center;gap:.3rem;font-family:var(--mono);font-size:.72rem;border:1px solid var(--rule);border-radius:999px;padding:.15em .6em;margin:.15rem .2rem .15rem 0}
+.chip button{border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:.9rem;padding:0}
+.addendum-card{border-left:3px solid var(--accent);margin:.6rem 0;padding:.4rem .9rem;background:var(--card);border-radius:0 6px 6px 0}
+.addendum-card .meta{font-family:var(--mono);font-size:.66rem;color:var(--muted)}
+.version{border:1px dashed var(--rule);border-radius:6px;padding:.5rem .8rem;margin:.4rem 0;font-size:.9rem}
+.tl{border-left:2px solid var(--rule);margin-left:.4rem;padding-left:1rem}
+.tl-item{position:relative;margin:.8rem 0}
+.tl-item::before{content:"";position:absolute;left:-1.42rem;top:.45rem;width:.6rem;height:.6rem;border-radius:50%;background:var(--accent)}
+.tl-item.trade::before{background:var(--muted)}
+.status-pill{font-family:var(--mono);font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;border-radius:999px;padding:.15em .6em;border:1px solid currentColor}
+.calgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:.8rem}
+.calgrid .dow{font-family:var(--mono);font-size:.6rem;text-transform:uppercase;color:var(--muted);text-align:center;padding:.2rem 0}
+.cal-day{border:1px solid var(--rule);border-radius:6px;min-height:62px;padding:.3rem .4rem;font-size:.72rem;cursor:pointer;background:var(--card)}
+.cal-day.empty{visibility:hidden}
+.cal-day .d{font-family:var(--mono);color:var(--muted)}
+.cal-day .p{font-variant-numeric:tabular-nums;font-weight:700}
+.cal-day .e{color:var(--accent-ink)}
+.card .body img{max-width:100%;border:1px solid var(--rule);border-radius:6px;display:block;margin:.4rem 0}
+.mention-box{border:1px solid var(--accent);border-radius:6px;background:var(--card);max-width:460px;margin-top:-.3rem}
+.mention-box div{padding:.35rem .7rem;cursor:pointer;font-size:.85rem;border-bottom:1px solid var(--rule)}
+.mention-box div:last-child{border-bottom:0}
+.mention-box div:hover,.mention-box div.sel{background:var(--bg)}
+.mention-box .mt{font-family:var(--mono);font-size:.62rem;color:var(--muted);margin-left:.5rem}
+.mention-tok{color:var(--accent-ink);font-weight:600}
+.chartbox{position:relative;margin:.8rem 0}
+.chartbox canvas{width:100%;height:280px;display:block;border:1px solid var(--rule);border-radius:6px;background:var(--card)}
+.chartbox .recon{position:absolute;top:6px;left:8px;font-family:var(--mono);font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+a{color:var(--accent-ink)}
+</style>
+</head>
+<body>
+<header>
+  <h1>Complete Journal</h1>
+  <nav id="nav">
+    <button data-v="write" class="active">Write</button>
+    <button data-v="journal">Journal</button>
+    <button data-v="theses">Theses</button>
+    <button data-v="session">Day review</button>
+    <button data-v="calendar">Calendar</button>
+    <button data-v="trades">Trades</button>
+    <button data-v="analytics">Analytics</button>
+    <button data-v="reports">Reports</button>
+    <button data-v="import">Import</button>
+    <button data-v="settings">Settings</button>
+  </nav>
+</header>
+<div id="upd-banner" hidden style="background:var(--card);border-bottom:1px solid var(--rule);padding:.6rem 16px;font-size:.9rem"></div>
+<main>
+
+<section id="v-write">
+  <h2>New entry</h2>
+  <p class="note">A blank page, always. Kind, title and date are optional.</p>
+  <div class="row">
+    <select id="w-kind">
+      <option value="">(no kind)</option>
+      <option>market-thought</option><option>pre-market</option><option>intraday</option>
+      <option>trade-review</option><option>post-trade</option><option>end-of-day</option>
+      <option>knowledge</option><option>psychology</option>
+    </select>
+    <input id="w-title" placeholder="Title (optional)">
+    <input id="w-about" type="date" title="Session date this entry is about (optional)">
+  </div>
+  <div class="toolbar" data-for="w-body"></div>
+  <textarea id="w-body" placeholder="Write freely. Markdown welcome. Type @ to link instruments (@MES), sessions (@2026-10-09), trades (@trade:12) or entries — links are created automatically on save."></textarea>
+  <div id="w-mention" class="mention-box" hidden></div>
+  <div id="w-preview" class="card" hidden></div>
+  <div id="w-sim"></div>
+  <div class="row">
+    <button class="primary" id="w-save">Save entry</button>
+    <button id="w-toggle" class="ghost">Preview</button>
+    <button id="w-template" class="ghost" title="Insert an optional pre-market plan outline">Plan template</button>
+    <button id="w-similar" class="ghost" title="Find past entries like this draft (runs on this computer)">Seen this before?</button>
+    <span id="w-msg" class="note"></span>
+  </div>
+</section>
+
+<section id="v-journal" hidden>
+  <h2>Journal</h2>
+  <div class="row">
+    <input id="j-q" placeholder="Full-text search…">
+    <select id="j-kind"><option value="">All kinds</option>
+      <option>market-thought</option><option>pre-market</option><option>intraday</option>
+      <option>trade-review</option><option>post-trade</option><option>end-of-day</option>
+      <option>knowledge</option><option>psychology</option></select>
+  </div>
+  <div id="j-list"></div>
+</section>
+
+<section id="v-entry" hidden>
+  <div class="row" style="justify-content:space-between"><button class="ghost" id="e-back" style="flex:0 0 auto">← Back</button></div>
+  <div id="e-out"></div>
+</section>
+
+<section id="v-theses" hidden>
+  <h2>Theses</h2>
+  <p class="note">Tag any entry <code>thesis</code> (or use “Mark as thesis” on an entry). Every later entry that mentions it with <code>@entry:N</code>, and every trade linked from those entries, joins its thread — no extra forms.</p>
+  <div id="th-out"></div>
+</section>
+
+<section id="v-session" hidden>
+  <h2>Day review</h2>
+  <div class="row"><input type="date" id="s-date"><button class="primary" id="s-load">Load day</button></div>
+  <div id="s-out"></div>
+</section>
+
+<section id="v-reports" hidden>
+  <h2>Weekly &amp; monthly reviews</h2>
+  <p class="note">The period's numbers next to what you wrote. Download as Markdown to keep or annotate.</p>
+  <div class="row">
+    <select id="r-kind"><option value="week">Week</option><option value="month">Month</option></select>
+    <input type="date" id="r-date">
+    <button class="primary" id="r-go">Build report</button>
+    <a id="r-md" class="ghost-link" href="#" target="_blank" rel="noopener">Open as Markdown</a>
+  </div>
+  <div id="r-out"></div>
+</section>
+
+<section id="v-settings" hidden>
+  <h2>Settings</h2>
+
+  <h3>Live connection (optional)</h3>
+  <p class="note">Fills appear here within about a second of happening. Read-only: Complete Journal can never place, change or cancel orders. Importing files keeps working for every platform. Credentials are kept in your system keychain (or a private file only you can read), never in the journal.</p>
+  <div id="live-status" class="note"></div>
+  <div class="row">
+    <select id="lv-platform"><option value="projectx">TopstepX / ProjectX</option><option value="tradovate">Tradovate</option></select>
+    <input id="lv-label" placeholder="Account name in your journal (optional)">
+  </div>
+  <div class="row" id="lv-fields-projectx">
+    <input id="lv-px-user" placeholder="ProjectX username" autocomplete="off">
+    <input id="lv-px-key" type="password" placeholder="ProjectX API key" autocomplete="off">
+    <input id="lv-px-acct" placeholder="Account ID (number)" inputmode="numeric">
+  </div>
+  <div class="row" id="lv-fields-tradovate" hidden>
+    <input id="lv-tv-user" placeholder="Tradovate username" autocomplete="off">
+    <input id="lv-tv-pass" type="password" placeholder="Password" autocomplete="off">
+    <input id="lv-tv-cid" placeholder="API key ID (cid)" autocomplete="off">
+    <input id="lv-tv-sec" type="password" placeholder="API secret (sec)" autocomplete="off">
+    <label class="note" style="flex:0 0 auto;align-self:center"><input type="checkbox" id="lv-tv-demo" style="width:auto"> demo</label>
+  </div>
+  <div class="row"><button class="primary" id="lv-connect">Connect</button><button class="ghost" id="lv-disconnect">Disconnect</button><button class="ghost" id="lv-forget">Forget credentials</button></div>
+
+  <h3>Phone quick-capture</h3>
+  <p class="note">Jot notes and snap photos from your phone during the session; they land here as intraday entries. Works on your home Wi-Fi. A paired phone can only add notes — it can't read your journal. Notes typed without signal are kept on the phone and sent later.</p>
+  <div id="phone-box"></div>
+
+  <h3>Updates</h3>
+  <div id="upd-box" class="note"></div>
+
+  <h3>AI (optional)</h3>
+  <p class="note">Complete Journal works fully without AI. "Seen this before?" and the daily recap run on this computer. If you add an Anthropic API key, you also get written AI summaries and "Ask your journal". AI text is always kept separate from your own writing and cites its sources.</p>
+  <div id="ai-status" class="note"></div>
+  <div class="row"><input id="ai-key" type="password" placeholder="Anthropic API key (sk-ant-…)" autocomplete="off"><button class="primary" id="ai-save">Save key</button><button class="ghost" id="ai-del">Remove key</button></div>
+  <div id="ai-ask-box" hidden>
+    <h3>Ask your journal</h3>
+    <div class="row"><input id="ai-q" placeholder="e.g. When have I chased failed breakouts, and what did I learn?"><button class="primary" id="ai-ask">Ask</button></div>
+    <div id="ai-answer"></div>
+  </div>
+  <h3>Demo data</h3>
+  <p class="note">Sample trades and entries live in a separate "Demo (sample data)" account and can be removed in one click from the Import screen.</p>
+</section>
+
+<section id="v-calendar" hidden>
+  <h2>Calendar</h2>
+  <p class="note">P&L and writing density together: where the money went <em>and</em> where the thinking happened.</p>
+  <div class="row" style="align-items:center">
+    <button id="c-prev" class="primary" style="flex:0;min-width:44px">‹</button>
+    <strong id="c-label" style="flex:0;min-width:140px;text-align:center"></strong>
+    <button id="c-next" class="primary" style="flex:0;min-width:44px">›</button>
+  </div>
+  <div id="c-grid" class="calgrid"></div>
+</section>
+
+<section id="v-trades" hidden>
+  <h2>Trades</h2>
+  <p class="note">Derived from raw executions (FIFO, flat→flat). Rebuildable at any time; never edited by hand.</p>
+  <div class="tablebox"><table id="t-table"><thead><tr>
+    <th>Date</th><th>Account</th><th>Sym</th><th>Dir</th><th>Max qty</th><th>Avg in</th><th>Avg out</th><th>Net P&L</th><th>Fills</th><th></th>
+  </tr></thead><tbody></tbody></table></div>
+  <div id="t-detail"></div>
+</section>
+
+<section id="v-analytics" hidden>
+  <h2>Analytics</h2>
+  <div id="a-stats" class="statgrid"></div>
+  <div id="a-notes"></div>
+  <h2>Process vs outcome <span class="note" style="font-weight:400">(grade trades A–F in trade detail; A/B = good decision, D/F = bad)</span></h2>
+  <div id="a-pvo" class="statgrid"></div>
+  <h2>Behavioral flags <span class="note" style="font-weight:400">(review prompts with evidence — not verdicts)</span></h2>
+  <div id="a-flags"></div>
+  <h2>Slippage</h2>
+  <div id="a-slip"></div>
+  <h2>Around economic releases</h2>
+  <div id="a-events" class="statgrid"></div>
+  <h2>Breakdowns</h2>
+  <div class="row"><select id="a-dim"><option value="symbol">By instrument</option><option value="weekday">By weekday</option><option value="hour">By hour (UTC)</option><option value="account">By account</option></select></div>
+  <div class="tablebox"><table id="a-bd"><thead><tr><th>Bucket</th><th>n</th><th>Win rate</th><th>Expectancy</th><th>95% range</th><th>Net P&L</th><th>Edge?</th></tr></thead><tbody></tbody></table></div>
+  <h2>Reconciliation (compare to your platform's daily statement)</h2>
+  <div class="tablebox"><table id="a-recon"><thead><tr>
+    <th>Date</th><th>Account</th><th>Trades</th><th>Fills</th><th>Gross</th><th>Fees</th><th>Net</th><th>Open</th>
+  </tr></thead><tbody></tbody></table></div>
+</section>
+
+<section id="v-import" hidden>
+  <h2>Import trades</h2>
+  <p class="note">Drop in any export from any platform — Tradovate, TopstepX/ProjectX, NinjaTrader, Rithmic R|Trader, TradingView, or anything else with fills or trades in it. The format, delimiter, number style and date order are detected automatically. Re-importing the same file is always safe.</p>
+  <div class="row">
+    <input type="file" id="i-file" accept=".csv,.txt,.tsv">
+  </div>
+  <div class="row">
+    <input id="i-account" placeholder="Account name (optional — taken from the file when it has one)">
+    <input id="i-tz" title="Timezone of the timestamps in the file. Defaults to this computer's timezone.">
+  </div>
+  <details class="note"><summary>Advanced</summary>
+    <div class="row"><select id="i-format"></select></div>
+  </details>
+  <div class="row"><button class="primary" id="i-go">Import</button></div>
+  <div id="i-out"></div>
+  <h2>Economic calendar</h2>
+  <p class="note">Scheduled releases (CPI, FOMC, payrolls…) shown on each day and in your recap. Nothing is fetched unless you click.</p>
+  <div class="row"><input type="file" id="ec-file" accept=".csv,.json,.txt"><input id="ec-tz" value="America/New_York" title="Timezone of times in a CSV file"><button class="primary" id="ec-import">Import calendar file</button></div>
+  <div class="row"><button class="ghost" id="ec-fetch">Fetch this week's calendar (public ForexFactory feed)</button></div>
+  <div class="row"><input id="ec-when" placeholder="2026-10-29 14:00 (New York time)"><input id="ec-event" placeholder="Event, e.g. FOMC Statement"><select id="ec-impact"><option>high</option><option>medium</option><option>low</option></select><button class="ghost" id="ec-add">Add event</button></div>
+  <div id="ec-msg" class="note"></div>
+
+  <h2>Try it with sample data</h2>
+  <p class="note">Loads ten days of clearly labelled sample trades, price bars and journal entries into a separate "Demo (sample data)" account. Removing it never touches your real records.</p>
+  <div class="row"><button class="primary" id="d-add">Load demo data</button><button class="primary" id="d-del" style="background:transparent;color:var(--neg);border:1px solid var(--rule)">Remove demo data</button><span id="d-msg" class="note"></span></div>
+</section>
+
+</main>
+<script>
+const $ = s => document.querySelector(s);
+const api = async (path, opts) => {
+  const r = await fetch(path, opts);
+  if (!r.ok) throw new Error((await r.json().catch(()=>({detail:r.statusText}))).detail);
+  return r.json();
+};
+const esc = s => (s??'').toString().replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const money = v => v==null?'—':(v<0?'-':'')+'$'+Math.abs(v).toFixed(2);
+// plain text with inline attachment images (strict pattern: internal ids only)
+// + highlighted @mentions
+const renderBody = s => esc(s)
+  .replace(/!\[([^\]]*)\]\((\/api\/attachments\/\d+)\)/g,
+    (_, alt, url) => `<img src="${url}" alt="${alt}" loading="lazy">`)
+  .replace(/(^|[^\w.])@((?:trade|entry):\d+|\d{4}-\d{2}-\d{2}|[A-Z0-9]{1,5})/g,
+    (_, pre, tok) => `${pre}<span class="mention-tok">@${tok}</span>`);
+
+// minimal markdown preview (headings, bold, italic, code, lists) on top of renderBody
+function renderMarkdown(src){
+  const lines = renderBody(src).split('\n');
+  let out = [], inList = false;
+  for(const ln of lines){
+    const h = ln.match(/^(#{1,3}) (.*)$/);
+    if(h){ if(inList){out.push('</ul>');inList=false;} out.push(`<h${h[1].length+2} style="margin:.6em 0 .2em">${h[2]}</h${h[1].length+2}>`); continue; }
+    const li = ln.match(/^[-*] (.*)$/);
+    if(li){ if(!inList){out.push('<ul style="margin:.3em 0">');inList=true;} out.push(`<li>${li[1]}</li>`); continue; }
+    if(inList){ out.push('</ul>'); inList=false; }
+    const q = ln.match(/^&gt; ?(.*)$/);
+    if(q){ out.push(`<blockquote style="margin:.3em 0;padding-left:.8em;border-left:3px solid var(--rule);color:var(--muted)">${q[1]}</blockquote>`); continue; }
+    out.push(ln === '' ? '<br>' : `<div>${ln}</div>`);
+  }
+  if(inList) out.push('</ul>');
+  return out.join('')
+    .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
+    .replace(/(^|[^*])\*([^*\n]+)\*/g,'$1<em>$2</em>')
+    .replace(/`([^`]+)`/g,'<code>$1</code>')
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>')
+    .replace(/^(-{3,})$/gm,'<hr>');
+}
+const cls = v => v>0?'pos':v<0?'neg':'';
+
+// nav
+document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('active',x===b));
+  document.querySelectorAll('main section').forEach(s=>s.hidden = s.id !== 'v-'+b.dataset.v);
+  const v=b.dataset.v;
+  if(v==='journal') loadJournal();
+  if(v==='trades') loadTrades();
+  if(v==='analytics') loadAnalytics();
+  if(v==='calendar') loadCalendar();
+  if(v==='theses') loadTheses();
+  if(v==='settings') { loadSettings(); loadLive(); loadPhone(); loadUpdates(); }
+  if(v==='reports' && !$('#r-out').innerHTML) buildReport();
+});
+
+$('#w-template').onclick = async () => {
+  const t = await api('/api/plan/template');
+  const ta = $('#w-body');
+  ta.value = ta.value ? ta.value + '\n\n' + t.template : t.template;
+  if(!$('#w-kind').value) $('#w-kind').value = 'pre-market';
+  ta.focus();
+};
+$('#w-similar').onclick = async () => {
+  const text = $('#w-body').value.trim();
+  if(!text){ $('#w-sim').innerHTML = '<p class="note">Write something first.</p>'; return; }
+  const hits = await api('/api/similar?text='+encodeURIComponent(text));
+  $('#w-sim').innerHTML = '<h3>Seen this before?</h3>' + similarList(hits, 'Nothing similar in your earlier entries.');
+};
+
+// preview toggle
+$('#w-toggle').onclick = () => {
+  const ta=$('#w-body'), pv=$('#w-preview'), showing = !pv.hidden;
+  if(showing){ pv.hidden=true; ta.hidden=false; $('#w-toggle').textContent='Preview'; }
+  else { pv.innerHTML = '<div class="body">'+renderMarkdown(ta.value||'*nothing yet*')+'</div>';
+         pv.hidden=false; ta.hidden=true; $('#w-toggle').textContent='Edit'; }
+};
+
+// @mention autocomplete
+let mentionAt = -1;
+const mbox = $('#w-mention');
+$('#w-body').addEventListener('input', async () => {
+  const ta = $('#w-body'), pos = ta.selectionStart;
+  const before = ta.value.slice(0, pos);
+  const m = before.match(/(?:^|[^\w.])@([\w:-]*)$/);
+  if(!m){ mbox.hidden = true; mentionAt = -1; return; }
+  mentionAt = pos - m[1].length - 1;
+  try{
+    const cands = await api('/api/mention?q='+encodeURIComponent(m[1]));
+    if(!cands.length){ mbox.hidden = true; return; }
+    mbox.innerHTML = cands.slice(0,8).map(c =>
+      `<div data-tok="${esc(c.token)}">${esc(c.label)}<span class="mt">${esc(c.type)}</span></div>`).join('');
+    mbox.hidden = false;
+    mbox.querySelectorAll('div[data-tok]').forEach(el => el.onclick = () => {
+      const tok = el.dataset.tok;
+      ta.value = ta.value.slice(0, mentionAt) + tok + ' ' + ta.value.slice(ta.selectionStart);
+      mbox.hidden = true; ta.focus();
+      const np = mentionAt + tok.length + 1;
+      ta.setSelectionRange(np, np);
+    });
+  }catch(e){ mbox.hidden = true; }
+});
+document.addEventListener('click', ev => { if(!mbox.contains(ev.target) && ev.target !== $('#w-body')) mbox.hidden = true; });
+
+// image paste -> attachment upload -> markdown reference in the textarea
+$('#w-body').addEventListener('paste', async ev => {
+  const item = [...(ev.clipboardData?.items||[])].find(i=>i.type.startsWith('image/'));
+  if(!item) return;
+  ev.preventDefault();
+  const blob = item.getAsFile();
+  const fd = new FormData();
+  fd.append('file', blob, 'pasted.png');
+  try{
+    const res = await api('/api/attachments', {method:'POST', body: fd});
+    const ta = $('#w-body'), pos = ta.selectionStart;
+    const md = `![chart](/api/attachments/${res.id})`;
+    ta.value = ta.value.slice(0,pos) + md + ta.value.slice(pos);
+    $('#w-msg').textContent = `Image attached (#${res.id}).`;
+  }catch(e){ $('#w-msg').textContent = 'Image upload failed: '+e.message; }
+});
+
+// calendar
+let calYM = (()=>{const d=new Date();return [d.getFullYear(), d.getMonth()];})();
+$('#c-prev').onclick=()=>{calYM[1]--; if(calYM[1]<0){calYM[1]=11;calYM[0]--;} loadCalendar();};
+$('#c-next').onclick=()=>{calYM[1]++; if(calYM[1]>11){calYM[1]=0;calYM[0]++;} loadCalendar();};
+async function loadCalendar(){
+  const [y,m] = calYM;
+  const data = await api('/api/calendar');
+  $('#c-label').textContent = new Date(y,m,1).toLocaleString('en',{month:'long',year:'numeric'});
+  const first = new Date(Date.UTC(y,m,1)).getUTCDay();
+  const days = new Date(y,m+1,0).getDate();
+  let html = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d=>`<div class="dow">${d}</div>`).join('');
+  for(let i=0;i<first;i++) html += '<div class="cal-day empty"></div>';
+  for(let d=1;d<=days;d++){
+    const key = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const v = data[key]||{};
+    html += `<div class="cal-day" data-date="${key}"><div class="d">${d}</div>`+
+      (v.net_pnl!=null?`<div class="p ${cls(v.net_pnl)}">${money(v.net_pnl)}</div>`:'')+
+      (v.trades?`<div>${v.trades} trade${v.trades>1?'s':''}</div>`:'')+
+      (v.entries?`<div class="e">✎ ${v.entries}</div>`:'')+'</div>';
+  }
+  $('#c-grid').innerHTML = html;
+  document.querySelectorAll('.cal-day[data-date]').forEach(el=>el.onclick=()=>{
+    $('#s-date').value = el.dataset.date;
+    document.querySelector('#nav button[data-v="session"]').click();
+    $('#s-load').click();
+  });
+}
+
+// write
+$('#w-save').onclick = async () => {
+  const body = $('#w-body').value.trim();
+  if(!body){ $('#w-msg').textContent='Nothing to save.'; return; }
+  try{
+    const res = await api('/api/entries', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({body_md: body, kind: $('#w-kind').value||null,
+        title: $('#w-title').value||null, about_date: $('#w-about').value||null})});
+    $('#w-msg').textContent = `Saved entry #${res.id}.`;
+    $('#w-body').value=''; $('#w-title').value='';
+  }catch(e){ $('#w-msg').textContent = 'Error: '+e.message; }
+};
+
+// journal list + search
+function entryCard(e, snippet){
+  return `<div class="card open-entry" data-entry="${e.id}" title="Open entry"><div class="meta">
+    <span>#${e.id}</span>
+    ${e.kind?`<span class="kind">${esc(e.kind)}</span>`:''}
+    <span>written ${esc((e.written_at||'').slice(0,16).replace('T',' '))}Z</span>
+    ${e.about_date?`<span>about ${esc(e.about_date)}</span>`:''}
+  </div>${e.title?`<strong>${esc(e.title)}</strong>`:''}
+  <div class="body">${snippet ?? renderBody(e.body_md||'')}</div></div>`;
+}
+async function loadJournal(){
+  const q = $('#j-q').value.trim();
+  if(q){
+    const hits = await api('/api/search?q='+encodeURIComponent(q));
+    $('#j-list').innerHTML = hits.length
+      ? hits.map(h=>entryCard(h, h.snippet)).join('')
+      : '<p class="note">No matches.</p>';
+    return;
+  }
+  const kind = $('#j-kind').value;
+  const rows = await api('/api/entries?limit=100'+(kind?`&kind=${kind}`:''));
+  $('#j-list').innerHTML = rows.length ? rows.map(e=>entryCard(e)).join('') : '<p class="note">No entries yet — go write one.</p>';
+}
+$('#j-q').addEventListener('change', loadJournal);
+$('#j-kind').addEventListener('change', loadJournal);
+
+// citations like [trade:12] / [entry:5] -> visible, styled references
+const cites = html => html.replace(/\[(trade|entry):(\d+)\]/g, '<span class="cite">[$1 #$2]</span>');
+
+function similarList(hits, emptyMsg){
+  if(!hits.length) return `<p class="note">${emptyMsg}</p>`;
+  return hits.map(h=>`<div class="card sim"><div class="meta"><span>#${h.id}</span>${h.kind?`<span class="kind">${esc(h.kind)}</span>`:''}<span>${esc(h.about_date||h.written_at.slice(0,10))}</span><span>match ${(h.score*100).toFixed(0)}%</span></div>
+    ${h.title?`<strong>${esc(h.title)}</strong> `:''}${esc(h.excerpt)}${h.excerpt.length>=240?'…':''}
+    <div class="why">shared: ${h.why.map(esc).join(' · ')}</div></div>`).join('');
+}
+
+let aiStatus = null;
+async function getAIStatus(){ try{ aiStatus = await api('/api/ai/status'); }catch(e){ aiStatus = {configured:false}; } return aiStatus; }
+
+// day review: plan vs actual, recap, similar past entries, optional AI
+$('#s-load').onclick = async () => {
+  const d = $('#s-date').value; if(!d) return;
+  const [pva, rc, st, ev] = await Promise.all([api('/api/plan/'+d), api('/api/recap/'+d), getAIStatus(), api('/api/econ/'+d+'?min_impact=medium')]);
+  const planHtml = pva.plan
+    ? `<div class="card"><div class="meta"><span class="kind">pre-market plan</span><span>#${pva.plan.id}</span><span>written ${esc(pva.plan.written_at.slice(0,16).replace('T',' '))}Z</span></div><div class="body">${renderBody(pva.plan.body_md)}</div></div>`
+    : `<p class="note">No pre-market plan for this day. Plans written with the "Plan template" button can be checked automatically.</p>`;
+  const rules = pva.results.length
+    ? `<h3>Rules from your plan: ${pva.kept} kept, ${pva.broken} broken</h3>` + pva.results.map(r=>
+        `<div class="${r.kept?'rule-ok':'rule-bad'}">${r.kept?'✓':'✗'} ${esc(r.rule)} <span class="note">— ${esc(r.detail)}${r.trade_ids.length?` (trades ${r.trade_ids.map(i=>'#'+i).join(', ')})`:''}</span></div>`).join('')
+    : '';
+  const tradesHtml = pva.trades.length
+    ? '<div class="tablebox"><table><thead><tr><th>#</th><th>In (UTC)</th><th>Sym</th><th>Dir</th><th>Qty</th><th>Net</th></tr></thead><tbody>'+
+      pva.trades.map(x=>`<tr><td>${x.id}</td><td>${esc(x.entry_ts.slice(11,16))}</td><td>${esc(x.symbol)}</td><td>${esc(x.direction)}</td><td>${x.qty_max}</td><td class="${cls(x.net_pnl)}">${money(x.net_pnl)}</td></tr>`).join('')+'</tbody></table></div>'
+      + `<p>Day net: <strong class="${cls(pva.net_pnl)}">${money(pva.net_pnl)}</strong></p>`
+    : '<p class="note">No trades this day.</p>';
+  const reflections = pva.reflections.map(e=>entryCard(e)).join('');
+  const recapHtml = `<div class="card"><div class="meta"><span class="kind">recap</span><span>${esc(rc.source)}</span></div>
+      ${rc.lines.map(l=>`<div>${cites(esc(l))}</div>`).join('')}
+      ${rc.questions.length?`<h3>Questions to reflect on</h3><ul>${rc.questions.map(q=>`<li>${cites(esc(q))}</li>`).join('')}</ul>`:''}</div>`;
+  const aiHtml = st.configured
+    ? `<div class="row"><button class="ghost" id="s-ai">Write an AI summary of this day</button><span class="note" id="s-ai-msg"></span></div><div id="s-ai-out"></div>`
+    : `<p class="note">Optional: add an Anthropic API key in Settings for written AI summaries. Everything above works without it.</p>`;
+  const evHtml = ev.events.length
+    ? '<div class="card"><div class="meta"><span class="kind">economic calendar</span></div>' + ev.events.map(e =>
+        `<div><strong style="color:${e.impact==='high'?'var(--neg)':'var(--muted)'}">${esc(e.impact)}</strong> · ${e.all_day?'all day':esc(new Date(e.ts_utc).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}))} · ${esc(e.currency||'')} ${esc(e.event)}${e.forecast?` <span class="note">(forecast ${esc(e.forecast)}${e.actual?`, actual ${esc(e.actual)}`:''})</span>`:''}</div>`).join('') + '</div>'
+    : '';
+  $('#s-out').innerHTML = evHtml + `
+    <div class="split">
+      <div><h3>The plan</h3>${planHtml}${rules}</div>
+      <div><h3>What happened</h3>${tradesHtml}${reflections}</div>
+    </div>
+    <h3>Recap</h3>${recapHtml}${aiHtml}
+    <h3>Seen this before?</h3><div id="s-sim"><p class="note">Looking through past entries…</p></div>`;
+  const anchor = pva.plan ? {entry_id: pva.plan.id} : (pva.reflections[0] ? {entry_id: pva.reflections[0].id} : null);
+  const sim = anchor ? await api('/api/similar?entry_id='+anchor.entry_id) : [];
+  $('#s-sim').innerHTML = similarList(sim, anchor ? 'Nothing similar in earlier entries yet.' : 'Write a plan or reflection for this day to find similar past days.');
+  const btn = $('#s-ai');
+  if(btn) btn.onclick = async () => {
+    $('#s-ai-msg').textContent = 'Writing…'; btn.disabled = true;
+    try{
+      const a = await api('/api/ai/summary/'+d, {method:'POST'});
+      $('#s-ai-out').innerHTML = aiCard(a); $('#s-ai-msg').textContent = '';
+    }catch(e){ $('#s-ai-msg').textContent = e.message; }
+    btn.disabled = false;
+  };
+};
+
+function aiCard(a){
+  return `<div class="ai-card"><div class="meta">AI-generated · ${esc(a.model)} · ${esc(a.created_at.slice(0,16).replace('T',' '))}Z · not part of your journal</div>
+    <div class="body">${cites(renderMarkdown(a.content_md))}</div>
+    ${a.unverified_citations && a.unverified_citations.length ? `<div class="warn">⚠ cited records it was not given (ignore these): ${a.unverified_citations.map(esc).join(', ')}</div>`:''}</div>`;
+}
+
+// trades
+async function loadTrades(){
+  const rows = await api('/api/trades');
+  $('#t-table tbody').innerHTML = rows.map(t=>`<tr>
+    <td>${esc(t.session_date)}</td><td>${esc(t.account_name)}</td><td>${esc(t.symbol)}</td>
+    <td>${esc(t.direction)}${t.is_open?' <span class="warn">(open)</span>':''}</td>
+    <td>${t.qty_max}</td><td>${t.avg_entry?.toFixed(2)}</td><td>${t.avg_exit!=null?t.avg_exit.toFixed(2):'—'}</td>
+    <td class="${cls(t.net_pnl)}">${money(t.net_pnl)}</td><td>${t.n_executions}</td>
+    <td><a href="#" data-id="${t.id}" class="t-open">detail</a></td></tr>`).join('')
+    || '<tr><td colspan="10" class="note">No trades imported yet.</td></tr>';
+  document.querySelectorAll('.t-open').forEach(a=>a.onclick=async ev=>{
+    ev.preventDefault();
+    const d = await api('/api/trades/'+a.dataset.id);
+    const curGrade = d.grade?.grade;
+    const gradeBtns = ['A','B','C','D','F'].map(g =>
+      `<button class="g-btn${curGrade===g?' primary':''}" data-g="${g}" data-tid="${d.trade.id}"
+        style="${curGrade===g?'':'background:transparent;color:var(--fg);border:1px solid var(--rule);'}border-radius:6px;padding:.25rem .7rem;font:inherit;cursor:pointer">${g}</button>`).join(' ');
+    $('#t-detail').innerHTML = `<div class="card"><div class="meta"><span>trade #${d.trade.id}</span><span>${esc(d.trade.algorithm_version)}</span></div>
+      <div class="row" style="align-items:center"><span class="note">Decision grade (process, not outcome):</span>${gradeBtns}<span class="note" id="g-msg">${d.grade?`graded ${esc(d.grade.graded_at.slice(0,10))}`:''}</span></div>
+      <div class="chartbox"><canvas id="t-chart"></canvas><span class="recon" id="t-chart-label"></span></div>
+      <div class="tablebox"><table><thead><tr><th>Time (UTC)</th><th>Side</th><th>Qty</th><th>Price</th><th>Fees</th><th>Source</th></tr></thead><tbody>
+      ${d.executions.map(e=>`<tr><td>${esc(e.ts_utc.slice(0,19).replace('T',' '))}</td><td>${esc(e.side)}</td><td>${e.attributed_qty}/${e.qty}</td><td>${e.price}</td><td>${money(e.fees)}</td><td>${esc(e.source)}</td></tr>`).join('')}
+      </tbody></table></div>
+      ${d.entries.length?d.entries.map(e=>entryCard(e)).join(''):'<p class="note">No journal entries linked to this trade yet.</p>'}</div>`;
+    loadTradeChart(d.trade.id);
+    api('/api/excursions/trade/'+d.trade.id).then(x => {
+      if(x.available === false) return;
+      const box = document.createElement('p'); box.className = 'note';
+      box.textContent = `Went against you ${x.mae_points} pts ($${x.mae_per_contract}/contract) · in your favour ${x.mfe_points} pts ($${x.mfe_per_contract}/contract)` +
+        (x.capture_ratio!=null ? ` · kept ${(100*x.capture_ratio).toFixed(0)}% of the favourable move` : '') + ` · approximate, from ${x.resolution} bars`;
+      $('#t-chart')?.closest('.chartbox')?.after(box);
+    });
+    document.querySelectorAll('.g-btn').forEach(b => b.onclick = async () => {
+      await api(`/api/trades/${b.dataset.tid}/grade`, {method:'POST',
+        headers:{'Content-Type':'application/json'}, body: JSON.stringify({grade: b.dataset.g})});
+      $('#g-msg').textContent = `graded ${b.dataset.g}`;
+      a.click();  // refresh detail
+    });
+  });
+}
+
+// ------- canvas candle chart (zero dependencies, offline-first) -------
+async function loadTradeChart(tradeId){
+  const cv = $('#t-chart'); if(!cv) return;
+  const data = await api(`/api/bars/trade/${tradeId}`);
+  const label = $('#t-chart-label');
+  if(!data.bars.length){
+    label.textContent = 'no price bars stored for this window — import bars or paste a screenshot';
+    cv.closest('.chartbox').style.display = 'none';
+    label.style.position='static'; cv.closest('.card').prepend(label);
+    return;
+  }
+  label.textContent = `reconstructed · ${data.symbol} · ${data.resolution} bars`;
+  drawChart(cv, data.bars, data.executions);
+}
+
+function drawChart(canvas, bars, executions){
+  const css = getComputedStyle(document.documentElement);
+  const col = n => css.getPropertyValue(n).trim();
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.clientWidth, H = canvas.clientHeight || 280;
+  canvas.width = W*dpr; canvas.height = H*dpr;
+  const ctx = canvas.getContext('2d'); ctx.scale(dpr,dpr);
+  const padL=8, padR=56, padT=14, padB=22;
+  const plotW=W-padL-padR, plotH=H-padT-padB;
+  const lo = Math.min(...bars.map(b=>b.low),  ...executions.map(e=>e.price));
+  const hi = Math.max(...bars.map(b=>b.high), ...executions.map(e=>e.price));
+  const span = (hi-lo)||1, pad = span*0.08;
+  const y = p => padT + plotH * (1-(p-(lo-pad))/(span+2*pad));
+  const t0 = Date.parse(bars[0].ts_utc), t1 = Date.parse(bars[bars.length-1].ts_utc)||t0+1;
+  const x = ts => padL + plotW * ((Date.parse(ts)-t0)/((t1-t0)||1));
+  const bw = Math.max(2, Math.min(9, plotW/bars.length*0.7));
+
+  // grid + price labels
+  ctx.font = '10px ui-monospace,monospace';
+  ctx.strokeStyle = col('--rule'); ctx.fillStyle = col('--muted'); ctx.lineWidth = 1;
+  for(let i=0;i<=4;i++){
+    const p = (lo-pad) + (span+2*pad)*i/4, yy = y(p);
+    ctx.beginPath(); ctx.moveTo(padL,yy); ctx.lineTo(W-padR,yy); ctx.stroke();
+    ctx.fillText(p.toFixed(2), W-padR+4, yy+3);
+  }
+  // time labels (first/last)
+  const fmt = ts => ts.slice(11,16)+'Z';
+  ctx.fillText(fmt(bars[0].ts_utc), padL, H-8);
+  ctx.fillText(fmt(bars[bars.length-1].ts_utc), W-padR-34, H-8);
+
+  // candles
+  for(const b of bars){
+    const cx = x(b.ts_utc), up = b.close >= b.open;
+    ctx.strokeStyle = ctx.fillStyle = up ? col('--pos') : col('--neg');
+    ctx.beginPath(); ctx.moveTo(cx, y(b.high)); ctx.lineTo(cx, y(b.low)); ctx.stroke();
+    const top = y(Math.max(b.open,b.close)), bot = y(Math.min(b.open,b.close));
+    ctx.fillRect(cx-bw/2, top, bw, Math.max(1, bot-top));
+  }
+  // execution markers: ▲ buy below price, ▼ sell above
+  for(const e of executions){
+    const cx = x(e.ts_utc), cy = y(e.price), buy = e.side==='buy', s=6;
+    ctx.fillStyle = buy ? col('--pos') : col('--neg');
+    ctx.beginPath();
+    if(buy){ ctx.moveTo(cx, cy+4); ctx.lineTo(cx-s, cy+4+s*1.5); ctx.lineTo(cx+s, cy+4+s*1.5); }
+    else   { ctx.moveTo(cx, cy-4); ctx.lineTo(cx-s, cy-4-s*1.5); ctx.lineTo(cx+s, cy-4-s*1.5); }
+    ctx.closePath(); ctx.fill();
+    ctx.font = '9px ui-monospace,monospace';
+    ctx.fillText(`${buy?'B':'S'}${e.qty}`, cx+s+2, buy? cy+12 : cy-8);
+  }
+}
+
+// analytics
+async function loadAnalytics(){
+  const s = await api('/api/stats');
+  const tiles = [
+    ['Closed trades', s.n], ['Win rate', s.win_rate!=null?(100*s.win_rate).toFixed(1)+'%':'—'],
+    ['Expectancy / trade', money(s.expectancy)], ['Profit factor', s.profit_factor?.toFixed(2) ?? '—'],
+    ['Avg win', money(s.avg_win)], ['Avg loss', s.avg_loss!=null?money(-s.avg_loss):'—'],
+    ['Net P&L', money(s.net_pnl)], ['Fees paid', money(s.fees)], ['Max drawdown', money(-s.max_drawdown)],
+  ];
+  $('#a-stats').innerHTML = tiles.map(([l,v])=>`<div class="stat"><div class="v">${v}</div><div class="l">${l}</div></div>`).join('');
+  const ci = s.expectancy_ci95, wr = s.win_rate_ci95;
+  $('#a-notes').innerHTML = (ci ? `<p><strong>Is there an edge?</strong> ${esc(s.edge)} — expectancy ${money(s.expectancy)} per trade, 95% range ${money(ci[0])} to ${money(ci[1])}${wr?`; win rate range ${(100*wr[0]).toFixed(0)}–${(100*wr[1]).toFixed(0)}%`:''}.</p>` : '')
+    + (s.notes||[]).map(n=>`<p class="warn">⚠ ${esc(n)}</p>`).join('');
+  // process vs outcome quadrant
+  const pvo = await api('/api/stats/process-vs-outcome');
+  const quad = [
+    ['Good decision, won', pvo.good_process_won], ['Good decision, lost', pvo.good_process_lost],
+    ['Bad decision, won ⚠', pvo.bad_process_won], ['Bad decision, lost', pvo.bad_process_lost],
+  ];
+  $('#a-pvo').innerHTML = quad.map(([l,q])=>`<div class="stat"><div class="v">${q.n}<span class="note" style="font-size:.8rem"> · ${money(q.net_pnl)}</span></div><div class="l">${l}</div></div>`).join('')
+    + `<div class="stat"><div class="v">${pvo.ungraded_or_c}</div><div class="l">Ungraded / C</div></div>`;
+
+  // behavioral flags
+  const bh = await api('/api/behavior');
+  const flags = [...bh.revenge_reentries, ...bh.size_escalation, ...bh.overtrading_days];
+  const st = bh.streaks;
+  let fhtml = flags.length
+    ? flags.map(f=>`<div class="card"><div class="meta"><span class="kind">${esc(f.kind)}</span><span>${esc(f.date)}</span></div>${esc(f.detail)}</div>`).join('')
+    : '<p class="note">No behavioral flags in the current data.</p>';
+  if(st.after_k_losses.n || st.after_k_wins.n){
+    fhtml += `<p class="note">After ${st.k}+ losses: expectancy ${money(st.after_k_losses.expectancy)} (n=${st.after_k_losses.n}) · after ${st.k}+ wins: ${money(st.after_k_wins.expectancy)} (n=${st.after_k_wins.n}) · overall: ${money(st.overall.expectancy)} (n=${st.overall.n}). ${esc(st.note)}</p>`;
+  }
+  $('#a-flags').innerHTML = fhtml;
+
+  // slippage (only where the export recorded stop/limit prices)
+  const sl = await api('/api/stats/slippage');
+  $('#a-slip').innerHTML = sl.fills_measured
+    ? '<div class="statgrid">' + Object.entries(sl.by_order_type).map(([k,v]) =>
+        `<div class="stat"><div class="v">${v.avg_ticks!=null?v.avg_ticks.toFixed(2)+' ticks':'—'}</div><div class="l">avg ${esc(k)} slippage · ${v.fills} fills · ${money(-v.total_dollars)}</div></div>`).join('') + `</div><p class="note">${esc(sl.note)}</p>`
+    : '<p class="note">No fills with a recorded stop/limit price yet. Exports that include them (e.g. TopstepX/ProjectX order history) are measured automatically.</p>';
+
+  // around economic releases
+  const evs = await api('/api/stats/events');
+  const tile = (l, q) => `<div class="stat"><div class="v">${q.n}<span class="note" style="font-size:.8rem"> · ${money(q.expectancy)}/trade</span></div><div class="l">${l}</div></div>`;
+  $('#a-events').innerHTML = (evs.near_high_impact.n || evs.away.n)
+    ? tile(`Within ${evs.window_minutes} min of high-impact news`, evs.near_high_impact) + tile('Away from news', evs.away)
+      + `<div class="note" style="grid-column:1/-1">${esc(evs.note)}. Import an economic calendar on the Import screen to fill this in.</div>`
+    : '<p class="note">Import an economic calendar (Import screen) to compare trades near releases with the rest.</p>';
+
+  // breakdowns
+  loadBreakdown();
+
+  const rec = await api('/api/reconciliation');
+  $('#a-recon tbody').innerHTML = rec.map(r=>`<tr><td>${esc(r.date)}</td><td>${esc(r.account)}</td><td>${r.trades}</td><td>${r.executions}</td><td class="${cls(r.gross_pnl)}">${money(r.gross_pnl)}</td><td>${money(r.fees)}</td><td class="${cls(r.net_pnl)}">${money(r.net_pnl)}</td><td>${r.still_open||0}</td></tr>`).join('')
+    || '<tr><td colspan="8" class="note">Nothing to reconcile yet.</td></tr>';
+}
+
+async function loadBreakdown(){
+  const dim = $('#a-dim').value;
+  const data = await api('/api/stats/breakdown/'+dim);
+  const dow = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  $('#a-bd tbody').innerHTML = Object.entries(data).map(([k,v])=>`<tr>
+    <td>${dim==='weekday'?dow[+k]??k:esc(k)}</td><td>${v.n}${v.low_sample?' <span class="warn" title="small sample">⚠</span>':''}</td>
+    <td>${v.win_rate!=null?(100*v.win_rate).toFixed(0)+'%':'—'}</td>
+    <td class="${cls(v.expectancy)}">${money(v.expectancy)}</td>
+    <td class="note">${v.expectancy_ci95?`${money(v.expectancy_ci95[0])} to ${money(v.expectancy_ci95[1])}`:'—'}</td>
+    <td class="${cls(v.net_pnl)}">${money(v.net_pnl)}</td>
+    <td class="note">${esc(v.edge)}</td></tr>`).join('')
+    || '<tr><td colspan="7" class="note">No closed trades yet.</td></tr>';
+}
+$('#a-dim').addEventListener('change', loadBreakdown);
+
+// reports
+$('#r-date').value = new Date().toISOString().slice(0,10);
+async function buildReport(){
+  const kind = $('#r-kind').value, d = $('#r-date').value || new Date().toISOString().slice(0,10);
+  $('#r-md').href = `/api/reports/${kind}/${d}?format=md`;
+  const r = await api(`/api/reports/${kind}/${d}`);
+  const s = r.stats;
+  const tiles = [['Closed trades', s.n], ['Net P&L', money(s.net_pnl)], ['Win rate', s.win_rate!=null?(100*s.win_rate).toFixed(0)+'%':'—'],
+    ['Expectancy', money(s.expectancy)], ['Profit factor', s.profit_factor?.toFixed(2) ?? '—'], ['Max drawdown', money(-s.max_drawdown)]];
+  $('#r-out').innerHTML = `<h3>${kind==='week'?'Week':'Month'} of ${esc(r.start)} → ${esc(r.end)}</h3>
+    <div class="statgrid">${tiles.map(([l,v])=>`<div class="stat"><div class="v">${v}</div><div class="l">${l}</div></div>`).join('')}</div>
+    ${s.low_sample?`<p class="warn">⚠ ${s.n} trades — figures are noise-dominated at this sample size.</p>`:''}
+    ${r.days.length?'<h3>Day by day</h3><div class="tablebox"><table><thead><tr><th>Date</th><th>Trades</th><th>Net</th></tr></thead><tbody>'+r.days.map(d=>`<tr><td>${esc(d.date)}</td><td>${d.trades}</td><td class="${cls(d.net_pnl)}">${money(d.net_pnl)}</td></tr>`).join('')+'</tbody></table></div>':''}
+    ${r.plan_adherence.length?'<h3>Plan adherence</h3>'+r.plan_adherence.map(a=>`<div>${esc(a.date)}: <span class="rule-ok">${a.kept} kept</span>, <span class="rule-bad">${a.broken} broken</span>${a.broken_rules.length?` <span class="note">(${a.broken_rules.map(esc).join('; ')})</span>`:''}</div>`).join(''):''}
+    ${r.flags.length?'<h3>Behaviour flags</h3>'+r.flags.map(f=>`<div class="note">${esc(f.date)} · ${esc(f.kind)}: ${esc(f.detail)}</div>`).join(''):''}
+    ${r.excursions.trades_with_bars?`<p class="note">Average share of the favourable move kept (trades with price bars): ${(100*r.excursions.avg_capture).toFixed(0)}% — approximate.</p>`:''}
+    <h3>What you wrote</h3>${r.entries.length?r.entries.map(e=>entryCard({...e, body_md:e.excerpt})).join(''):'<p class="note">No entries in this period.</p>'}`;
+}
+$('#r-go').onclick = buildReport;
+
+// settings
+async function loadSettings(){
+  const st = await getAIStatus();
+  $('#ai-status').innerHTML = st.configured
+    ? `AI is <strong>on</strong> · model ${esc(st.model)}`
+    : (st.sdk_installed ? 'AI is <strong>off</strong> (no key saved).' : 'AI is <strong>off</strong>. To enable it later, install the AI extras (<code>pip install "completejournal[ai]"</code>) and add a key.');
+  $('#ai-ask-box').hidden = !st.configured;
+}
+$('#ai-save').onclick = async () => {
+  const k = $('#ai-key').value.trim(); if(!k) return;
+  try{ const r = await api('/api/ai/key', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({key:k})});
+       $('#ai-key').value=''; $('#ai-status').textContent = `Key saved (${r.stored_in}).`; loadSettings(); }
+  catch(e){ $('#ai-status').textContent = e.message; }
+};
+$('#ai-del').onclick = async () => { await api('/api/ai/key', {method:'DELETE'}); loadSettings(); };
+$('#ai-ask').onclick = async () => {
+  const q = $('#ai-q').value.trim(); if(!q) return;
+  $('#ai-answer').innerHTML = '<p class="note">Searching your journal and writing an answer…</p>';
+  try{ $('#ai-answer').innerHTML = aiCard(await api('/api/ai/ask', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({question:q})})); }
+  catch(e){ $('#ai-answer').innerHTML = `<p class="warn">${esc(e.message)}</p>`; }
+};
+
+// live connection
+function lvToggle(){ const p = $('#lv-platform').value;
+  $('#lv-fields-projectx').hidden = p !== 'projectx'; $('#lv-fields-tradovate').hidden = p !== 'tradovate'; }
+$('#lv-platform').addEventListener('change', lvToggle);
+async function loadLive(){
+  const st = await api('/api/live/status');
+  const rows = Object.values(st.connections).map(c => {
+    const label = {live:'● live', connecting:'connecting…', reconnecting:'reconnecting…', stopped:'stopped', error:'error'}[c.state] || c.state;
+    return `<div><strong>${esc(c.platform)}</strong>: ${esc(label)} · ${c.fills_added} new fill(s) synced`
+      + (c.last_event_at?` · last fill event ${esc(c.last_event_at)}`:'')
+      + (c.reconnects?` · ${c.reconnects} reconnect(s)`:'')
+      + (c.last_error?`<div class="warn">${esc(c.last_error)}</div>`:'') + '</div>';
+  });
+  const saved = Object.entries(st.saved).filter(([,v])=>v).map(([k])=>k);
+  $('#live-status').innerHTML = (rows.join('') || 'Not connected.') + (saved.length?`<div>Remembered: ${saved.map(esc).join(', ')} (reconnects when the app starts)</div>`:'');
+}
+$('#lv-connect').onclick = async () => {
+  const p = $('#lv-platform').value;
+  const creds = p === 'projectx'
+    ? {username: $('#lv-px-user').value, api_key: $('#lv-px-key').value, account_id: $('#lv-px-acct').value}
+    : {username: $('#lv-tv-user').value, password: $('#lv-tv-pass').value, cid: $('#lv-tv-cid').value, sec: $('#lv-tv-sec').value, demo: $('#lv-tv-demo').checked};
+  if($('#lv-label').value.trim()) creds.account_label = $('#lv-label').value.trim();
+  try { await api('/api/live/connect', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({platform:p, credentials:creds, remember:true})});
+        document.querySelectorAll('#lv-fields-projectx input, #lv-fields-tradovate input').forEach(i=>{ if(i.type!=='checkbox') i.value=''; });
+        setTimeout(loadLive, 800); }
+  catch(e){ $('#live-status').innerHTML = `<div class="warn">${esc(e.message)}</div>`; }
+};
+$('#lv-disconnect').onclick = async () => { await api('/api/live/disconnect', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({platform:$('#lv-platform').value})}); loadLive(); };
+$('#lv-forget').onclick = async () => { await api('/api/live/forget', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({platform:$('#lv-platform').value})}); loadLive(); };
+
+// phone
+async function loadPhone(){
+  const st = await api('/api/phone/status');
+  if(!st.enabled){
+    $('#phone-box').innerHTML = `<div class="row"><button class="primary" id="ph-on">Turn on phone capture</button></div>`;
+    $('#ph-on').onclick = async () => {
+      try{ await api('/api/phone/enable', {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'}); loadPhone(); }
+      catch(e){ $('#phone-box').insertAdjacentHTML('beforeend', `<p class="warn">Could not turn on: ${esc(e.message)}</p>`); }
+    };
+    return;
+  }
+  $('#phone-box').innerHTML = `
+    <div class="split"><div>
+      <p>Scan with your phone's camera (same Wi-Fi), then use “Add to Home Screen” for a one-tap icon.</p>
+      <p class="note">Or open: <code style="word-break:break-all">${esc(st.pair_url)}</code></p>
+      <p class="note">${st.listening ? '● Listening on your network' : '<span class="warn">Not listening — try turning it off and on.</span>'} · port ${st.port}</p>
+      <div class="row"><button class="ghost" id="ph-unpair">Unpair all phones</button><button class="ghost" id="ph-off">Turn off</button></div>
+    </div><div style="max-width:220px;background:#fff;padding:8px;border-radius:8px">${st.qr_svg || ''}</div></div>`;
+  $('#ph-unpair').onclick = async () => { await api('/api/phone/unpair-all', {method:'POST'}); loadPhone(); };
+  $('#ph-off').onclick = async () => { await api('/api/phone/disable', {method:'POST'}); loadPhone(); };
+}
+
+// updates
+async function updatePref(on){ await api('/api/updates/preference', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({enabled:on})}); loadUpdates(); }
+async function loadUpdates(){
+  let u; try { u = await api('/api/updates'); } catch(e){ return; }
+  const ban = $('#upd-banner');
+  if(u.preference === 'ask'){
+    ban.hidden = false;
+    ban.innerHTML = `Check for new versions of Complete Journal once a day? It only asks GitHub for the latest version number — nothing about you or your journal is sent. <button class="ghost" id="ub-yes">Yes</button> <button class="ghost" id="ub-no">No thanks</button>`;
+    $('#ub-yes').onclick = () => updatePref(true); $('#ub-no').onclick = () => updatePref(false);
+  } else if(u.update_available){
+    ban.hidden = false;
+    ban.innerHTML = `Version ${esc(u.latest)} is available (you have ${esc(u.current)}). <button class="ghost" id="ub-dl">Download and verify</button> <a href="${esc(u.release_url || u.download_url)}" target="_blank" rel="noopener">release notes</a> · your journal is kept when you install it. <span id="ub-msg"></span>`;
+    $('#ub-dl').onclick = async () => {
+      $('#ub-msg').textContent = 'Downloading…';
+      try { const r = await api('/api/updates/download', {method:'POST'});
+            $('#ub-msg').textContent = `Verified ✓ saved to ${r.path}. ${r.next_step}`; }
+      catch(e){ $('#ub-msg').innerHTML = `<span class="warn">${esc(e.message)}</span>`; }
+    };
+  } else ban.hidden = true;
+  $('#upd-box').innerHTML = `You have version ${esc(u.current)}. Update checks are <strong>${u.preference==='on'?'on':'off'}</strong>. `
+    + (u.preference==='on' ? `<button class="ghost" id="up-now">Check now</button> <button class="ghost" id="up-off">Turn off</button>` : `<button class="ghost" id="up-on">Turn on</button>`)
+    + (u.error?`<div class="warn">${esc(u.error)}</div>`:'') + (u.note?` <span>${esc(u.note)}.</span>`:'')
+    + (u.latest && !u.update_available ? ' You are up to date.' : '');
+  $('#up-now') && ($('#up-now').onclick = async () => { await api('/api/updates/check', {method:'POST'}); loadUpdates(); });
+  $('#up-off') && ($('#up-off').onclick = () => updatePref(false));
+  $('#up-on') && ($('#up-on').onclick = () => updatePref(true));
+}
+loadUpdates();
+
+
+// ---------- formatting toolbar (markdown underneath: portable, future-proof) ----------
+function wrapSel(ta, before, after = before, placeholder = 'text'){
+  const [a, b] = [ta.selectionStart, ta.selectionEnd];
+  const sel = ta.value.slice(a, b) || placeholder;
+  ta.value = ta.value.slice(0, a) + before + sel + after + ta.value.slice(b);
+  ta.focus(); ta.setSelectionRange(a + before.length, a + before.length + sel.length);
+  ta.dispatchEvent(new Event('input'));
+}
+function prefixLines(ta, prefix){
+  const a = ta.value.lastIndexOf('\n', ta.selectionStart - 1) + 1;
+  const b = ta.selectionEnd;
+  const block = ta.value.slice(a, b) || '';
+  let n = 0;
+  const out = block.split('\n').map(l => prefix === '1. ' ? `${++n}. ${l}` : prefix + l).join('\n');
+  ta.value = ta.value.slice(0, a) + out + ta.value.slice(b);
+  ta.focus(); ta.setSelectionRange(a, a + out.length);
+}
+function attachToolbar(bar, ta){
+  const tools = [
+    ['B', 'Bold (Ctrl+B)', () => wrapSel(ta, '**')], ['I', 'Italic (Ctrl+I)', () => wrapSel(ta, '*')],
+    ['H', 'Heading', () => prefixLines(ta, '## ')], ['•', 'Bullet list', () => prefixLines(ta, '- ')],
+    ['1.', 'Numbered list', () => prefixLines(ta, '1. ')], ['❝', 'Quote', () => prefixLines(ta, '> ')],
+    ['</>', 'Code', () => wrapSel(ta, '`')], ['🔗', 'Link', () => wrapSel(ta, '[', '](https://)', 'link text')],
+    ['—', 'Divider', () => { const p = ta.selectionStart; ta.value = ta.value.slice(0,p) + '\n---\n' + ta.value.slice(p); ta.focus(); }],
+    ['@', 'Link a trade, instrument, day or entry', () => { const p = ta.selectionStart; ta.value = ta.value.slice(0,p) + '@' + ta.value.slice(p); ta.focus(); ta.setSelectionRange(p+1,p+1); ta.dispatchEvent(new Event('input')); }],
+  ];
+  bar.innerHTML = tools.map((t, i) => `<button type="button" data-i="${i}" title="${t[1]}" aria-label="${t[1]}">${t[0]}</button>`).join('');
+  bar.querySelectorAll('button').forEach(b => b.onclick = () => tools[+b.dataset.i][2]());
+  ta.addEventListener('keydown', e => {
+    if(!(e.ctrlKey || e.metaKey)) return;
+    if(e.key === 'b'){ e.preventDefault(); wrapSel(ta, '**'); }
+    if(e.key === 'i'){ e.preventDefault(); wrapSel(ta, '*'); }
+  });
+}
+attachToolbar(document.querySelector('.toolbar[data-for="w-body"]'), $('#w-body'));
+
+// ---------- navigation helper ----------
+let lastView = 'journal';
+function show(v){
+  document.querySelectorAll('#nav button').forEach(x => x.classList.toggle('active', x.dataset.v === v));
+  document.querySelectorAll('main section').forEach(sec => sec.hidden = sec.id !== 'v-' + v);
+  window.scrollTo(0, 0);
+}
+document.addEventListener('click', ev => {
+  const card = ev.target.closest('.open-entry');
+  if(!card || ev.target.closest('a,button,img,input,textarea')) return;
+  const active = document.querySelector('#nav button.active');
+  if(active) lastView = active.dataset.v;
+  openEntry(+card.dataset.entry);
+});
+$('#e-back').onclick = () => { document.querySelector(`#nav button[data-v="${lastView}"]`)?.click() || show('journal'); };
+
+// ---------- entry page: edit (versioned), addenda, history, tags, links ----------
+async function openEntry(id){
+  show('entry');
+  const d = await api('/api/entries/' + id);
+  const e = d.entry, isThesis = d.tags.includes('thesis');
+  $('#e-out').innerHTML = `
+    <div class="card">
+      <div class="meta"><span>#${e.id}</span>${e.kind?`<span class="kind">${esc(e.kind)}</span>`:''}
+        <span>written ${esc(e.written_at.slice(0,16).replace('T',' '))}Z</span>${e.about_date?`<span>about ${esc(e.about_date)}</span>`:''}
+        <span>${d.n_versions} version${d.n_versions>1?'s':''}</span>${e.deleted_at?'<span class="warn">deleted</span>':''}</div>
+      ${e.title?`<h2 style="margin:.2rem 0 .5rem">${esc(e.title)}</h2>`:''}
+      <div class="body" id="e-body">${renderMarkdown(e.body_md)}</div>
+      <div id="e-edit" hidden>
+        <div class="toolbar" id="e-toolbar"></div>
+        <input id="e-title" placeholder="Title (optional)" value="${esc(e.title||'')}">
+        <textarea id="e-text" style="margin-top:.4rem">${esc(e.body_md)}</textarea>
+        <p class="note">Saving keeps the previous version in the history — nothing you wrote is overwritten. To add what you learned later without changing the original, use “What I learned later” below instead.</p>
+        <div class="row"><button class="primary" id="e-save">Save new version</button><button class="ghost" id="e-cancel">Cancel</button></div>
+      </div>
+      <div class="row" id="e-actions">
+        <button class="ghost" id="e-editbtn">Edit</button>
+        <button class="ghost" id="e-thesis">${isThesis?'Open thesis thread':'Mark as thesis'}</button>
+        <button class="ghost" id="e-sim">Seen this before?</button>
+        <button class="ghost" id="e-del" style="color:var(--neg)">Delete</button>
+      </div>
+    </div>
+
+    <h3>What I learned later</h3>
+    ${d.addenda.map(a=>`<div class="addendum-card"><div class="meta">added ${esc(a.written_at.slice(0,16).replace('T',' '))}Z</div><div class="body">${renderMarkdown(a.body_md)}</div></div>`).join('') || '<p class="note">Nothing added yet. Hindsight goes here, kept apart from what you believed at the time.</p>'}
+    <textarea id="e-add" placeholder="Looking back, what do you know now that you didn't then?" style="min-height:90px"></textarea>
+    <div class="row"><button class="primary" id="e-addbtn">Add note</button></div>
+
+    <h3>Tags</h3>
+    <div id="e-tags">${d.tags.map(t=>`<span class="chip">${esc(t)}<button data-tag="${esc(t)}" title="Remove tag" aria-label="Remove tag ${esc(t)}">×</button></span>`).join('') || '<span class="note">No tags.</span>'}</div>
+    <div class="row"><input id="e-tag" placeholder="Add a tag, e.g. mistake/chased or setup/orb" list="e-taglist"><datalist id="e-taglist"></datalist><button class="ghost" id="e-tagbtn" style="flex:0 0 auto">Add tag</button></div>
+
+    <h3>Links</h3>
+    <div>${d.links.map(l=>`<span class="chip">${esc(l.label)}<button data-unlink="${esc(l.target_type)}|${esc(l.target_id)}" title="Remove link" aria-label="Remove link">×</button></span>`).join('') || '<span class="note">Mention @MES, @2026-10-09, @trade:12 or @entry:5 in the text to link.</span>'}</div>
+    ${d.backlinks.length?`<h3>Mentioned by</h3>${d.backlinks.map(b=>entryCard({...b, body_md:b.excerpt})).join('')}`:''}
+
+    <h3>Version history</h3>
+    <div id="e-versions"><button class="ghost" id="e-vbtn">Show ${d.n_versions} version${d.n_versions>1?'s':''}</button></div>
+    <div id="e-simout"></div>`;
+
+  attachToolbar($('#e-toolbar'), $('#e-text'));
+  $('#e-editbtn').onclick = () => { $('#e-edit').hidden = false; $('#e-body').hidden = true; $('#e-actions').hidden = true; $('#e-text').focus(); };
+  $('#e-cancel').onclick = () => openEntry(id);
+  $('#e-save').onclick = async () => {
+    const body = $('#e-text').value.trim(); if(!body) return;
+    await api('/api/entries/'+id, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({body_md: body, title: $('#e-title').value.trim() || null})});
+    openEntry(id);
+  };
+  $('#e-addbtn').onclick = async () => {
+    const body = $('#e-add').value.trim(); if(!body) return;
+    await api(`/api/entries/${id}/addenda`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({body_md: body})});
+    openEntry(id);
+  };
+  const addTag = async () => {
+    const t = $('#e-tag').value.trim(); if(!t) return;
+    try { await api(`/api/entries/${id}/tags`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({tag: t})}); openEntry(id); }
+    catch(err){ $('#e-tag').value = ''; $('#e-tag').placeholder = err.message; }
+  };
+  $('#e-tagbtn').onclick = addTag;
+  $('#e-tag').addEventListener('keydown', ev => { if(ev.key === 'Enter') addTag(); });
+  api('/api/tags').then(ts => $('#e-taglist').innerHTML = ts.map(t => `<option value="${esc(t.tag)}">`).join(''));
+  document.querySelectorAll('#e-tags [data-tag]').forEach(b => b.onclick = async () => {
+    await api(`/api/entries/${id}/tags/${b.dataset.tag.split('/').map(encodeURIComponent).join('/')}`, {method:'DELETE'}); openEntry(id);
+  });
+  document.querySelectorAll('[data-unlink]').forEach(b => b.onclick = async () => {
+    const [tt, tid] = b.dataset.unlink.split('|');
+    await api(`/api/entries/${id}/links/${encodeURIComponent(tt)}/${encodeURIComponent(tid)}`, {method:'DELETE'}); openEntry(id);
+  });
+  $('#e-vbtn').onclick = async () => {
+    const vs = await api(`/api/entries/${id}/versions`);
+    $('#e-versions').innerHTML = vs.map((v, i) => `<div class="version"><div class="meta note">version ${i+1} · saved ${esc(v.saved_at.slice(0,16).replace('T',' '))}Z${i===0?' · original':''}${i===vs.length-1?' · current':''}</div><div class="body">${renderMarkdown(v.body_md)}</div></div>`).join('');
+  };
+  $('#e-thesis').onclick = async () => {
+    if(!isThesis) await api(`/api/entries/${id}/tags`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({tag:'thesis'})});
+    openThesis(id);
+  };
+  $('#e-sim').onclick = async () => { $('#e-simout').innerHTML = '<h3>Seen this before?</h3>' + similarList(await api('/api/similar?entry_id='+id), 'Nothing similar in other entries.'); };
+  $('#e-del').onclick = async () => {
+    if($('#e-del').dataset.confirm !== '1'){ $('#e-del').dataset.confirm = '1'; $('#e-del').textContent = 'Click again to delete (history is kept)'; return; }
+    await api('/api/entries/'+id, {method:'DELETE'}); show('journal'); loadJournal();
+  };
+}
+
+// ---------- theses ----------
+const statusColor = st => ({confirmed:'var(--pos)', invalidated:'var(--neg)', mixed:'var(--accent-ink)', open:'var(--muted)'}[st]);
+async function loadTheses(){
+  const list = await api('/api/theses');
+  $('#th-out').innerHTML = list.length ? list.map(t => `<div class="card open-thesis" data-thesis="${t.id}" style="cursor:pointer">
+      <div class="meta"><span>#${t.id}</span><span class="status-pill" style="color:${statusColor(t.status)}">${esc(t.status)}</span>
+      <span>${esc((t.about_date || t.written_at).slice(0,10))}</span><span>${t.entries} entr${t.entries===1?'y':'ies'} · ${t.trades} trade${t.trades===1?'':'s'}${t.trades?` · ${money(t.net_pnl)}`:''}</span></div>
+      ${t.title?`<strong>${esc(t.title)}</strong> `:''}${esc(t.excerpt)}</div>`).join('')
+    : '<p class="note">No theses yet. Open any entry and choose “Mark as thesis”.</p>';
+  document.querySelectorAll('.open-thesis').forEach(c => c.onclick = () => openThesis(+c.dataset.thesis));
+}
+async function openThesis(id){
+  show('theses');
+  const t = await api('/api/theses/' + id);
+  const item = x => {
+    if(x.type === 'trade'){ const tr = x.trade;
+      return `<div class="tl-item trade"><div class="note">${esc(x.at.slice(0,16).replace('T',' '))}Z · trade #${tr.id}</div>${esc(tr.symbol)} ${esc(tr.direction)} ×${tr.qty_max} · <span class="${cls(tr.net_pnl)}">${money(tr.net_pnl)}</span></div>`; }
+    if(x.type === 'addendum') return `<div class="tl-item"><div class="note">${esc(x.at.slice(0,16).replace('T',' '))}Z · learned later</div><div class="addendum-card">${renderMarkdown(x.addendum.body_md)}</div></div>`;
+    const e = x.entry;
+    return `<div class="tl-item"><div class="note">${esc(x.at.slice(0,16).replace('T',' '))}Z · ${x.type==='thesis'?'<strong>thesis</strong>':esc(e.kind||'entry')}</div>${entryCard(e)}</div>`;
+  };
+  $('#th-out').innerHTML = `<div class="row"><button class="ghost" id="th-back" style="flex:0 0 auto">← All theses</button></div>
+    <h3>${esc(t.thesis.title || 'Thesis #' + t.thesis.id)} <span class="status-pill" style="color:${statusColor(t.status)}">${esc(t.status)}</span></h3>
+    <p class="note">${t.entries.length} entr${t.entries.length===1?'y':'ies'} · ${t.trades.length} trade${t.trades.length===1?'':'s'}${t.trades.length?` · net ${money(t.net_pnl)}`:''}. How did it turn out?
+      ${['open','confirmed','invalidated','mixed'].map(st=>`<button class="ghost" data-st="${st}" style="padding:.2rem .6rem;${t.status===st?'border-color:var(--accent)':''}">${st}</button>`).join(' ')}</p>
+    <div class="tl">${t.timeline.map(item).join('')}</div>
+    <p class="note">To add to this thread, mention <code>@entry:${t.thesis.id}</code> in any new entry.</p>`;
+  $('#th-back').onclick = loadTheses;
+  document.querySelectorAll('[data-st]').forEach(b => b.onclick = async () => {
+    await api(`/api/theses/${id}/status`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({status: b.dataset.st})}); openThesis(id);
+  });
+}
+
+// economic calendar
+const ecMsg = (t, warn) => { $('#ec-msg').innerHTML = warn ? `<span class="warn">${esc(t)}</span>` : esc(t); };
+const ecResult = r => r.error ? ecMsg(r.error, true) : ecMsg(`Added ${r.added} event(s)` + (r.skipped && r.skipped.length ? ` · skipped ${r.skipped.length}: ${r.skipped.slice(0,3).join('; ')}` : '') + '.');
+$('#ec-import').onclick = async () => {
+  const f = $('#ec-file').files[0]; if(!f){ ecMsg('Choose a file first.', true); return; }
+  const fd = new FormData(); fd.append('file', f); fd.append('tz', $('#ec-tz').value || 'America/New_York');
+  try { ecResult(await api('/api/econ/import', {method:'POST', body: fd})); } catch(e){ ecMsg(e.message, true); }
+};
+$('#ec-fetch').onclick = async () => { ecMsg('Fetching…'); ecResult(await api('/api/econ/fetch-week', {method:'POST'})); };
+$('#ec-add').onclick = async () => {
+  try { await api('/api/econ/event', {method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({when: $('#ec-when').value, event: $('#ec-event').value, impact: $('#ec-impact').value})});
+        ecMsg('Event added.'); $('#ec-event').value=''; }
+  catch(e){ ecMsg(e.message, true); }
+};
+
+// demo data
+$('#d-add').onclick = async () => {
+  const r = await api('/api/demo', {method:'POST'});
+  $('#d-msg').textContent = r.seeded ? `Loaded ${r.trades_total} sample trades across ${r.sessions} sessions.` : 'Demo data is already loaded.';
+};
+$('#d-del').onclick = async () => {
+  const r = await api('/api/demo', {method:'DELETE'});
+  $('#d-msg').textContent = `Removed ${r.trades} sample trades and ${r.entries} sample entries.`;
+};
+
+// import
+(async () => {
+  try { $('#i-tz').value = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch(e) {}
+  try {
+    const fmts = await api('/api/import/formats');
+    $('#i-format').innerHTML = fmts.map(f => `<option value="${esc(f)}"${f==='auto'?' selected':''}>${f==='auto'?'Auto-detect (recommended)':esc(f)}</option>`).join('');
+  } catch(e) { $('#i-format').innerHTML = '<option value="auto">Auto-detect</option>'; }
+})();
+$('#i-go').onclick = async () => {
+  const f = $('#i-file').files[0];
+  if(!f){ $('#i-out').innerHTML = '<p class="warn">Choose a file first.</p>'; return; }
+  const fd = new FormData();
+  fd.append('file', f);
+  fd.append('format', $('#i-format').value || 'auto');
+  if($('#i-account').value.trim()) fd.append('account', $('#i-account').value.trim());
+  if($('#i-tz').value.trim()) fd.append('tz', $('#i-tz').value.trim());
+  $('#i-out').innerHTML = '<p class="note">Importing…</p>';
+  try{
+    const r = await api('/api/import', {method:'POST', body: fd});
+    const info = r.parse_info || {};
+    $('#i-out').innerHTML = `<div class="card">
+      <div class="meta"><span class="kind">${esc(r.detected_format)}</span><span>${esc(info.timezone||'')}</span>
+        ${info.decimal_comma?'<span>comma decimals</span>':''}${info.dayfirst?'<span>day-first dates</span>':''}</div>
+      <strong>${r.new} new fill(s)</strong>, ${r.duplicates} already imported · ${r.trades_total} trades total in journal
+      <div class="note">Account(s): ${r.accounts.map(esc).join(', ')}</div>
+      ${r.unknown_instruments.length?`<div class="note">Instruments without contract specs (P&amp;L shown in points; correct for stocks): ${r.unknown_instruments.map(esc).join(', ')}</div>`:''}
+      ${r.warnings.map(w=>`<div class="warn">⚠ ${esc(w)}</div>`).join('')}
+    </div>`;
+  }catch(e){ $('#i-out').innerHTML = `<p class="warn">Could not import: ${esc(e.message)}</p>`; }
+};
+
+// default date = today
+$('#s-date').value = new Date().toISOString().slice(0,10);
+</script>
+</body>
+</html>

@@ -1,0 +1,2 @@
+Id,ContractName,EnteredAt,ExitedAt,EntryPrice,ExitPrice,Fees,PnL,Size,Type,TradeDay,TradeDuration,Commissions
+1,ESM24,01/01/2025 09:30:00 +00:00,01/01/2025 10:00:00 +00:00,5000.00,5010.00,1.00,500.00,1,Long,01/01/2025,00:30:00,2.00
