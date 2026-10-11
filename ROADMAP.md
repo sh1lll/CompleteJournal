@@ -58,9 +58,11 @@
 | **Tradovate REST adapter** (auth, token refresh, fills + fees + contract resolution, idempotent sync) | ✅ code | 🚩 **A5: not yet run against live API** (no credentials in build env); mocked-transport tests pass |
 | **ProjectX adapter** (loginKey auth, Account/Trade search, contractId parsing, platform-P&L reconciliation) | ✅ code | 🚩 A5; side encoding (0=buy) to confirm on first live sync |
 | Read-only guarantee | ✅ | no order endpoints exist in any adapter; enforced by tests |
-| Databento OHLCV fetcher | ⏳ | needs API key |
+| Databento OHLCV fetcher (plain HTTPS, key via env var) | ✅ code | 🚩 A5: mocked-transport tested; first live fetch needs DATABENTO_API_KEY |
 | Tradovate WebSocket live sweep / ProjectX SignalR | ⏳ | REST backfill pattern first (assessment §5.3) |
-| Screenshot watched-folder, economic calendar, plan pinning UI | ⏳ | |
+| Screenshot folder import (content-addressed, per-day index entries, auto session links) | ✅ | CLI `import-screenshots --dir` |
+| Sync CLI (`sync --platform tradovate\|projectx`, env-var credentials) | ✅ | credentials never stored |
+| Economic calendar, plan pinning UI, Tauri wrap | ⏳ | |
 
 - 🚩 **A5**: Sync adapters are built from official docs + community SDKs with mocked-transport tests. First live run (user credentials required) must confirm: Tradovate fillFee fields, ProjectX side encoding, timestamp formats.
 
