@@ -172,6 +172,20 @@ CREATE TABLE IF NOT EXISTS ai_artifacts (
     created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
 
+-- --------------------------------------------------------------------- bars
+-- Price context (OHLCV) captured around trades: from CSV import or an API
+-- fetcher (e.g. Databento). Charts rendered from here are RECONSTRUCTED price,
+-- never "the chart as seen" — the UI must label them as such.
+CREATE TABLE IF NOT EXISTS bars (
+    symbol     TEXT NOT NULL,            -- instrument root (ES, MES, ...)
+    resolution TEXT NOT NULL,            -- '1m', '5m', '1h', '1d'
+    ts_utc     TEXT NOT NULL,            -- bar open time, ISO-8601 UTC
+    open REAL NOT NULL, high REAL NOT NULL, low REAL NOT NULL, close REAL NOT NULL,
+    volume     REAL,
+    source     TEXT NOT NULL,            -- csv | databento | ...
+    PRIMARY KEY (symbol, resolution, ts_utc)
+);
+
 -- --------------------------------------------------------------------- FTS
 CREATE VIRTUAL TABLE IF NOT EXISTS entries_fts USING fts5(
     title, body_md, content='entries', content_rowid='id'

@@ -27,7 +27,7 @@
 - 🚩 **A3**: Pricing/policy figures labeled [U] in the assessment must be re-verified before money is spent.
 - 🚩 **A4**: Platform-specific CSV importers are built against *documented* export layouts (synthetic fixtures); they must be validated against real export files from each platform before being trusted. The generic mapping importer is the safe path meanwhile.
 
-## Phase 1 — MVP: capture + journal core 🔄 (core built 2026-10-11, 38 tests passing)
+## Phase 1 — MVP: capture + journal core 🔄 (core built 2026-10-11, 50 tests passing)
 
 | Item | Status | Notes |
 |---|---|---|
@@ -38,7 +38,7 @@
 | Journal store: versioned immutability, addenda, soft-delete only, AI structurally barred from `entries` | ✅ | provenance invariants tested |
 | FTS5 search with snippets; bidirectional entry↔trade/session/instrument links | ✅ | |
 | Core stats with sample-size honesty (n<30 flagged) + breakdowns + equity curve | ✅ | |
-| Web UI: write / journal+search / session timeline / trades+detail / analytics / import | ✅ MVP | textarea editor; **TipTap upgrade deferred to Phase 2/5** |
+| Web UI: write / journal+search / session timeline / calendar / trades+detail / analytics / import | ✅ | @-mention autocomplete, markdown preview, image paste; TipTap rich editor still optional/deferred |
 | CLI: init/import/rebuild/stats/reconcile/write/search/serve | ✅ | `python -m completejournal …` |
 | Live verification | ✅ | CLI + HTTP smoke test: 3 platforms imported, P&L hand-checked (MES $52.50, ES $83.32, NQ $190.00) |
 | Markdown/git export mirror + full data export | ✅ | `export.py`; CLI `export`; YAML front matter, CSV/JSON dumps |
@@ -48,9 +48,21 @@
 
 **Interim habits (zero code):** daily writing in markdown/Obsidian; daily CSV export ritual into `data/raw/<date>/` (gitignored).
 
-## Phase 2 — Auto-sync + market context (3–5 pw) ⏳ (blocked on 🚩 Phase 0.5)
+## Phase 2 — Auto-sync + market context 🔄 (unblocked by D1: all-platform adapter architecture)
 
-Primary integration (Tradovate WS sweep / ProjectX SignalR / NT8 AddOn) · keychain credentials, no order endpoints ever · dedupe/reconciliation UI · Databento OHLCV + lightweight-charts with execution markers (labeled *reconstructed*) · screenshot watched-folder · economic calendar · plan pinning + plan-vs-actual.
+| Item | Status | Notes |
+|---|---|---|
+| @-mention auto-linking (@MES, @2026-10-09, @trade:12, @entry:5) + autocomplete API | ✅ | links created on save; additive, never destructive |
+| Price-bar storage (`bars` table) + universal bars CSV importer + per-trade window API | ✅ | OHLC consistency validated; labeled *reconstructed* |
+| Canvas candle chart with execution markers (zero-dependency, offline-first) | ✅ | CDN egress blocked in build env → hand-rolled; lightweight-charts remains an optional swap |
+| **Tradovate REST adapter** (auth, token refresh, fills + fees + contract resolution, idempotent sync) | ✅ code | 🚩 **A5: not yet run against live API** (no credentials in build env); mocked-transport tests pass |
+| **ProjectX adapter** (loginKey auth, Account/Trade search, contractId parsing, platform-P&L reconciliation) | ✅ code | 🚩 A5; side encoding (0=buy) to confirm on first live sync |
+| Read-only guarantee | ✅ | no order endpoints exist in any adapter; enforced by tests |
+| Databento OHLCV fetcher | ⏳ | needs API key |
+| Tradovate WebSocket live sweep / ProjectX SignalR | ⏳ | REST backfill pattern first (assessment §5.3) |
+| Screenshot watched-folder, economic calendar, plan pinning UI | ⏳ | |
+
+- 🚩 **A5**: Sync adapters are built from official docs + community SDKs with mocked-transport tests. First live run (user credentials required) must confirm: Tradovate fillFee fields, ProjectX side encoding, timestamp formats.
 
 ## Phase 3 — Analytics depth + behavioral lens (2–3 pw) ⏳
 

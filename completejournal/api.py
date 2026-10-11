@@ -13,7 +13,7 @@ from pydantic import BaseModel
 
 from fastapi.responses import Response
 
-from . import analytics, attachments as attmod, db as dbmod, journal, reconstruction
+from . import analytics, attachments as attmod, bars as barsmod, db as dbmod, journal, reconstruction
 from .importers import base as impbase
 from .importers.platforms import REGISTRY
 
@@ -141,6 +141,55 @@ def create_app(db_path: str | Path, attachments_root: str | Path | None = None) 
             return {"ok": True, "note": "soft-deleted; versions preserved"}
         finally:
             c.close()
+
+    @app.get("/api/mention")
+    def mention(q: str = ""):
+        c = conn()
+        try:
+            return journal.mention_candidates(c, q)
+        finally:
+            c.close()
+
+    @app.get("/api/bars/trade/{trade_id}")
+    def trade_bars(trade_id: int, resolution: str | None = None, pad_minutes: int = 45):
+        c = conn()
+        try:
+            t = c.execute("SELECT * FROM trades WHERE id=?", (trade_id,)).fetchone()
+            if not t:
+                raise HTTPException(404, "trade not found")
+            data = barsmod.bars_around(c, t["symbol"], t["entry_ts"], t["exit_ts"],
+                                       pad_minutes=pad_minutes, resolution=resolution)
+            fills = c.execute(
+                """SELECT e.ts_utc, e.side, te.qty AS qty, e.price FROM trade_executions te
+                   JOIN executions e ON e.id=te.execution_id WHERE te.trade_id=? ORDER BY e.ts_utc""",
+                (trade_id,)).fetchall()
+            data["executions"] = [dict(f) for f in fills]
+            data["trade"] = {"id": t["id"], "direction": t["direction"],
+                             "avg_entry": t["avg_entry"], "avg_exit": t["avg_exit"]}
+            return data
+        finally:
+            c.close()
+
+    @app.post("/api/bars/import")
+    async def import_bars(
+        file: UploadFile,
+        symbol: str = Form(...),
+        resolution: str = Form("1m"),
+        tz_offset_minutes: int = Form(0),
+    ):
+        with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as tmp:
+            tmp.write(await file.read())
+            tmp_path = tmp.name
+        c = conn()
+        try:
+            n = barsmod.import_bars_csv(c, tmp_path, symbol, resolution,
+                                        tz_offset_minutes=tz_offset_minutes)
+            return {"bars_new": n, "symbol": symbol.upper(), "resolution": resolution}
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+        finally:
+            c.close()
+            Path(tmp_path).unlink(missing_ok=True)
 
     @app.get("/api/search")
     def search(q: str):

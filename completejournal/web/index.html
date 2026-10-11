@@ -54,6 +54,15 @@ mark{background:transparent;color:var(--accent-ink);font-weight:700}
 .cal-day .p{font-variant-numeric:tabular-nums;font-weight:700}
 .cal-day .e{color:var(--accent-ink)}
 .card .body img{max-width:100%;border:1px solid var(--rule);border-radius:6px;display:block;margin:.4rem 0}
+.mention-box{border:1px solid var(--accent);border-radius:6px;background:var(--card);max-width:460px;margin-top:-.3rem}
+.mention-box div{padding:.35rem .7rem;cursor:pointer;font-size:.85rem;border-bottom:1px solid var(--rule)}
+.mention-box div:last-child{border-bottom:0}
+.mention-box div:hover,.mention-box div.sel{background:var(--bg)}
+.mention-box .mt{font-family:var(--mono);font-size:.62rem;color:var(--muted);margin-left:.5rem}
+.mention-tok{color:var(--accent-ink);font-weight:600}
+.chartbox{position:relative;margin:.8rem 0}
+.chartbox canvas{width:100%;height:280px;display:block;border:1px solid var(--rule);border-radius:6px;background:var(--card)}
+.chartbox .recon{position:absolute;top:6px;left:8px;font-family:var(--mono);font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
 a{color:var(--accent-ink)}
 </style>
 </head>
@@ -85,8 +94,14 @@ a{color:var(--accent-ink)}
     <input id="w-title" placeholder="Title (optional)">
     <input id="w-about" type="date" title="Session date this entry is about (optional)">
   </div>
-  <textarea id="w-body" placeholder="Write freely. Markdown welcome."></textarea>
-  <div class="row"><button class="primary" id="w-save">Save entry</button><span id="w-msg" class="note"></span></div>
+  <textarea id="w-body" placeholder="Write freely. Markdown welcome. Type @ to link instruments (@MES), sessions (@2026-10-09), trades (@trade:12) or entries — links are created automatically on save."></textarea>
+  <div id="w-mention" class="mention-box" hidden></div>
+  <div id="w-preview" class="card" hidden></div>
+  <div class="row">
+    <button class="primary" id="w-save">Save entry</button>
+    <button id="w-toggle" class="primary" style="background:transparent;color:var(--accent-ink);border:1px solid var(--rule)">Preview</button>
+    <span id="w-msg" class="note"></span>
+  </div>
 </section>
 
 <section id="v-journal" hidden>
@@ -160,8 +175,31 @@ const api = async (path, opts) => {
 const esc = s => (s??'').toString().replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const money = v => v==null?'—':(v<0?'-':'')+'$'+Math.abs(v).toFixed(2);
 // plain text with inline attachment images (strict pattern: internal ids only)
-const renderBody = s => esc(s).replace(/!\[([^\]]*)\]\((\/api\/attachments\/\d+)\)/g,
-  (_, alt, url) => `<img src="${url}" alt="${alt}" loading="lazy">`);
+// + highlighted @mentions
+const renderBody = s => esc(s)
+  .replace(/!\[([^\]]*)\]\((\/api\/attachments\/\d+)\)/g,
+    (_, alt, url) => `<img src="${url}" alt="${alt}" loading="lazy">`)
+  .replace(/(^|[^\w.])@((?:trade|entry):\d+|\d{4}-\d{2}-\d{2}|[A-Z0-9]{1,5})/g,
+    (_, pre, tok) => `${pre}<span class="mention-tok">@${tok}</span>`);
+
+// minimal markdown preview (headings, bold, italic, code, lists) on top of renderBody
+function renderMarkdown(src){
+  const lines = renderBody(src).split('\n');
+  let out = [], inList = false;
+  for(const ln of lines){
+    const h = ln.match(/^(#{1,3}) (.*)$/);
+    if(h){ if(inList){out.push('</ul>');inList=false;} out.push(`<h${h[1].length+2} style="margin:.6em 0 .2em">${h[2]}</h${h[1].length+2}>`); continue; }
+    const li = ln.match(/^[-*] (.*)$/);
+    if(li){ if(!inList){out.push('<ul style="margin:.3em 0">');inList=true;} out.push(`<li>${li[1]}</li>`); continue; }
+    if(inList){ out.push('</ul>'); inList=false; }
+    out.push(ln === '' ? '<br>' : `<div>${ln}</div>`);
+  }
+  if(inList) out.push('</ul>');
+  return out.join('')
+    .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
+    .replace(/(^|[^*])\*([^*\n]+)\*/g,'$1<em>$2</em>')
+    .replace(/`([^`]+)`/g,'<code>$1</code>');
+}
 const cls = v => v>0?'pos':v<0?'neg':'';
 
 // nav
@@ -174,6 +212,40 @@ document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>{
   if(v==='analytics') loadAnalytics();
   if(v==='calendar') loadCalendar();
 });
+
+// preview toggle
+$('#w-toggle').onclick = () => {
+  const ta=$('#w-body'), pv=$('#w-preview'), showing = !pv.hidden;
+  if(showing){ pv.hidden=true; ta.hidden=false; $('#w-toggle').textContent='Preview'; }
+  else { pv.innerHTML = '<div class="body">'+renderMarkdown(ta.value||'*nothing yet*')+'</div>';
+         pv.hidden=false; ta.hidden=true; $('#w-toggle').textContent='Edit'; }
+};
+
+// @mention autocomplete
+let mentionAt = -1;
+const mbox = $('#w-mention');
+$('#w-body').addEventListener('input', async () => {
+  const ta = $('#w-body'), pos = ta.selectionStart;
+  const before = ta.value.slice(0, pos);
+  const m = before.match(/(?:^|[^\w.])@([\w:-]*)$/);
+  if(!m){ mbox.hidden = true; mentionAt = -1; return; }
+  mentionAt = pos - m[1].length - 1;
+  try{
+    const cands = await api('/api/mention?q='+encodeURIComponent(m[1]));
+    if(!cands.length){ mbox.hidden = true; return; }
+    mbox.innerHTML = cands.slice(0,8).map(c =>
+      `<div data-tok="${esc(c.token)}">${esc(c.label)}<span class="mt">${esc(c.type)}</span></div>`).join('');
+    mbox.hidden = false;
+    mbox.querySelectorAll('div[data-tok]').forEach(el => el.onclick = () => {
+      const tok = el.dataset.tok;
+      ta.value = ta.value.slice(0, mentionAt) + tok + ' ' + ta.value.slice(ta.selectionStart);
+      mbox.hidden = true; ta.focus();
+      const np = mentionAt + tok.length + 1;
+      ta.setSelectionRange(np, np);
+    });
+  }catch(e){ mbox.hidden = true; }
+});
+document.addEventListener('click', ev => { if(!mbox.contains(ev.target) && ev.target !== $('#w-body')) mbox.hidden = true; });
 
 // image paste -> attachment upload -> markdown reference in the textarea
 $('#w-body').addEventListener('paste', async ev => {
@@ -287,11 +359,79 @@ async function loadTrades(){
     ev.preventDefault();
     const d = await api('/api/trades/'+a.dataset.id);
     $('#t-detail').innerHTML = `<div class="card"><div class="meta"><span>trade #${d.trade.id}</span><span>${esc(d.trade.algorithm_version)}</span></div>
+      <div class="chartbox"><canvas id="t-chart"></canvas><span class="recon" id="t-chart-label"></span></div>
       <div class="tablebox"><table><thead><tr><th>Time (UTC)</th><th>Side</th><th>Qty</th><th>Price</th><th>Fees</th><th>Source</th></tr></thead><tbody>
       ${d.executions.map(e=>`<tr><td>${esc(e.ts_utc.slice(0,19).replace('T',' '))}</td><td>${esc(e.side)}</td><td>${e.attributed_qty}/${e.qty}</td><td>${e.price}</td><td>${money(e.fees)}</td><td>${esc(e.source)}</td></tr>`).join('')}
       </tbody></table></div>
       ${d.entries.length?d.entries.map(e=>entryCard(e)).join(''):'<p class="note">No journal entries linked to this trade yet.</p>'}</div>`;
+    loadTradeChart(d.trade.id);
   });
+}
+
+// ------- canvas candle chart (zero dependencies, offline-first) -------
+async function loadTradeChart(tradeId){
+  const cv = $('#t-chart'); if(!cv) return;
+  const data = await api(`/api/bars/trade/${tradeId}`);
+  const label = $('#t-chart-label');
+  if(!data.bars.length){
+    label.textContent = 'no price bars stored for this window — import bars or paste a screenshot';
+    cv.closest('.chartbox').style.display = 'none';
+    label.style.position='static'; cv.closest('.card').prepend(label);
+    return;
+  }
+  label.textContent = `reconstructed · ${data.symbol} · ${data.resolution} bars`;
+  drawChart(cv, data.bars, data.executions);
+}
+
+function drawChart(canvas, bars, executions){
+  const css = getComputedStyle(document.documentElement);
+  const col = n => css.getPropertyValue(n).trim();
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.clientWidth, H = canvas.clientHeight || 280;
+  canvas.width = W*dpr; canvas.height = H*dpr;
+  const ctx = canvas.getContext('2d'); ctx.scale(dpr,dpr);
+  const padL=8, padR=56, padT=14, padB=22;
+  const plotW=W-padL-padR, plotH=H-padT-padB;
+  const lo = Math.min(...bars.map(b=>b.low),  ...executions.map(e=>e.price));
+  const hi = Math.max(...bars.map(b=>b.high), ...executions.map(e=>e.price));
+  const span = (hi-lo)||1, pad = span*0.08;
+  const y = p => padT + plotH * (1-(p-(lo-pad))/(span+2*pad));
+  const t0 = Date.parse(bars[0].ts_utc), t1 = Date.parse(bars[bars.length-1].ts_utc)||t0+1;
+  const x = ts => padL + plotW * ((Date.parse(ts)-t0)/((t1-t0)||1));
+  const bw = Math.max(2, Math.min(9, plotW/bars.length*0.7));
+
+  // grid + price labels
+  ctx.font = '10px ui-monospace,monospace';
+  ctx.strokeStyle = col('--rule'); ctx.fillStyle = col('--muted'); ctx.lineWidth = 1;
+  for(let i=0;i<=4;i++){
+    const p = (lo-pad) + (span+2*pad)*i/4, yy = y(p);
+    ctx.beginPath(); ctx.moveTo(padL,yy); ctx.lineTo(W-padR,yy); ctx.stroke();
+    ctx.fillText(p.toFixed(2), W-padR+4, yy+3);
+  }
+  // time labels (first/last)
+  const fmt = ts => ts.slice(11,16)+'Z';
+  ctx.fillText(fmt(bars[0].ts_utc), padL, H-8);
+  ctx.fillText(fmt(bars[bars.length-1].ts_utc), W-padR-34, H-8);
+
+  // candles
+  for(const b of bars){
+    const cx = x(b.ts_utc), up = b.close >= b.open;
+    ctx.strokeStyle = ctx.fillStyle = up ? col('--pos') : col('--neg');
+    ctx.beginPath(); ctx.moveTo(cx, y(b.high)); ctx.lineTo(cx, y(b.low)); ctx.stroke();
+    const top = y(Math.max(b.open,b.close)), bot = y(Math.min(b.open,b.close));
+    ctx.fillRect(cx-bw/2, top, bw, Math.max(1, bot-top));
+  }
+  // execution markers: ▲ buy below price, ▼ sell above
+  for(const e of executions){
+    const cx = x(e.ts_utc), cy = y(e.price), buy = e.side==='buy', s=6;
+    ctx.fillStyle = buy ? col('--pos') : col('--neg');
+    ctx.beginPath();
+    if(buy){ ctx.moveTo(cx, cy+4); ctx.lineTo(cx-s, cy+4+s*1.5); ctx.lineTo(cx+s, cy+4+s*1.5); }
+    else   { ctx.moveTo(cx, cy-4); ctx.lineTo(cx-s, cy-4-s*1.5); ctx.lineTo(cx+s, cy-4-s*1.5); }
+    ctx.closePath(); ctx.fill();
+    ctx.font = '9px ui-monospace,monospace';
+    ctx.fillText(`${buy?'B':'S'}${e.qty}`, cx+s+2, buy? cy+12 : cy-8);
+  }
 }
 
 // analytics
