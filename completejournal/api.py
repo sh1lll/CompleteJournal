@@ -14,6 +14,7 @@ from pydantic import BaseModel
 
 from fastapi.responses import Response
 
+from . import ai, excursions, plan as planmod, recap as recapmod, reports, similar
 from . import analytics, attachments as attmod, bars as barsmod, behavior, db as dbmod, journal, reconstruction
 from .importers import base as impbase
 from .importers import auto as impauto
@@ -39,6 +40,14 @@ class LinkIn(BaseModel):
 
 class AddendumIn(BaseModel):
     body_md: str
+
+
+class KeyIn(BaseModel):
+    key: str
+
+
+class AskIn(BaseModel):
+    question: str
 
 
 class GradeIn(BaseModel):
@@ -293,6 +302,119 @@ def create_app(db_path: str | Path, attachments_root: str | Path | None = None) 
             raise HTTPException(400, str(e))
         except KeyError as e:
             raise HTTPException(404, str(e))
+        finally:
+            c.close()
+
+    # ------------------------------------------- review tools (no AI)
+    @app.get("/api/similar")
+    def similar_entries(text: str | None = None, entry_id: int | None = None, limit: int = 5):
+        c = conn()
+        try:
+            return similar.find_similar(c, text=text, entry_id=entry_id, limit=limit)
+        except KeyError as e:
+            raise HTTPException(404, str(e))
+        finally:
+            c.close()
+
+    @app.get("/api/recap/{date}")
+    def daily_recap(date: str):
+        c = conn()
+        try:
+            return recapmod.daily(c, date)
+        finally:
+            c.close()
+
+    @app.get("/api/plan/template")
+    def plan_template():
+        return {"template": planmod.PLAN_TEMPLATE}
+
+    @app.get("/api/plan/{date}")
+    def plan_vs_actual(date: str):
+        c = conn()
+        try:
+            return planmod.plan_vs_actual(c, date)
+        finally:
+            c.close()
+
+    @app.get("/api/reports/{kind}/{date}")
+    def report(kind: str, date: str, format: str = "json"):
+        c = conn()
+        try:
+            r = reports.build(c, kind, date)
+            if format == "md":
+                return Response(content=reports.to_markdown(r), media_type="text/markdown")
+            return r
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+        finally:
+            c.close()
+
+    @app.get("/api/excursions/summary")
+    def excursion_summary():
+        c = conn()
+        try:
+            return excursions.summary(c)
+        finally:
+            c.close()
+
+    @app.get("/api/excursions/trade/{trade_id}")
+    def excursion(trade_id: int):
+        c = conn()
+        try:
+            return excursions.trade_excursion(c, trade_id) or {"trade_id": trade_id, "available": False,
+                    "reason": "no price bars stored for this trade's window"}
+        finally:
+            c.close()
+
+    # --------------------------------------------------- optional AI
+    @app.get("/api/ai/status")
+    def ai_status():
+        c = conn()
+        try:
+            return ai.status(c)
+        finally:
+            c.close()
+
+    @app.post("/api/ai/key")
+    def ai_set_key(body: KeyIn):
+        try:
+            where = ai.save_key(body.key)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+        return {"saved": True, "stored_in": where}
+
+    @app.delete("/api/ai/key")
+    def ai_del_key():
+        ai.delete_key()
+        return {"deleted": True}
+
+    @app.post("/api/ai/summary/{date}")
+    def ai_summary(date: str):
+        c = conn()
+        try:
+            return ai.daily_summary(c, date)
+        except ai.AIUnavailable as e:
+            raise HTTPException(409, str(e))
+        finally:
+            c.close()
+
+    @app.post("/api/ai/ask")
+    def ai_ask(body: AskIn):
+        c = conn()
+        try:
+            return ai.ask(c, body.question)
+        except ai.AIUnavailable as e:
+            raise HTTPException(409, str(e))
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+        finally:
+            c.close()
+
+    @app.get("/api/ai/artifacts")
+    def ai_artifacts():
+        c = conn()
+        try:
+            return ai.list_artifacts(c)
         finally:
             c.close()
 
