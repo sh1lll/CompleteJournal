@@ -11,7 +11,8 @@
 | 0.2 | Research existing journal products (TradeZella, Tradervue, TraderSync, Edgewonk, TradesViz, Journalytix, etc.) | 🔄 | Agent dispatched |
 | 0.3 | Research broker/platform/prop-firm API feasibility (Tradovate, Rithmic, NinjaTrader, IBKR, TradingView, MT4/5, prop firms, CSV fallbacks) | 🔄 | Agent dispatched |
 | 0.4 | Research architecture building blocks (storage, editors, charting, AI, costs) | 🔄 | Agent dispatched |
-| 0.5 | Synthesize final deliverable (12-section assessment) into `docs/` | ⏳ | |
+| 0.5a | Draft sections 03 (journal experience) & 04 (analytics/AI) | ✅ | Spec-driven, no external research needed |
+| 0.5b | Synthesize research-dependent sections (01, 02, 05, 06, 07, 08) | ⏳ | Blocked on agents 0.2–0.4 |
 | 0.6 | Commit, push, publish report page | ⏳ | |
 
 ## Assumptions (marked for review)
