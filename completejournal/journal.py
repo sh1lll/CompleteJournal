@@ -173,12 +173,77 @@ def link(conn: sqlite3.Connection, entry_id: int, target_type: str, target_id: s
     conn.commit()
 
 
-def tag(conn: sqlite3.Connection, entry_id: int, *tags: str) -> None:
+def normalize_tag(t: str) -> str:
+    """'Mistake/ Chased Entry' -> 'mistake/chased-entry'. Namespaces via '/'."""
+    t = re.sub(r"\s*/\s*", "/", (t or "").strip().lower().lstrip("#"))
+    t = re.sub(r"[^a-z0-9/\-]+", "-", t).strip("-/")
+    t = re.sub(r"-{2,}", "-", t)
+    if not t or len(t) > 60:
+        raise ValueError("tag must be 1-60 characters of letters, numbers, '-' or '/'")
+    return t
+
+
+def tag(conn: sqlite3.Connection, entry_id: int, *tags: str) -> list[str]:
+    clean = [normalize_tag(t) for t in tags]
     conn.executemany(
         "INSERT OR IGNORE INTO tags(entry_id, tag) VALUES (?,?)",
-        [(entry_id, t) for t in tags],
+        [(entry_id, t) for t in clean],
     )
     conn.commit()
+    return clean
+
+
+def untag(conn: sqlite3.Connection, entry_id: int, tag_: str) -> None:
+    conn.execute("DELETE FROM tags WHERE entry_id=? AND tag=?", (entry_id, tag_))
+    conn.commit()
+
+
+def tags_of(conn: sqlite3.Connection, entry_id: int) -> list[str]:
+    return [r[0] for r in conn.execute("SELECT tag FROM tags WHERE entry_id=? ORDER BY tag", (entry_id,))]
+
+
+def all_tags(conn: sqlite3.Connection) -> list[dict]:
+    return [dict(r) for r in conn.execute(
+        "SELECT t.tag, COUNT(*) AS n FROM tags t JOIN entries e ON e.id=t.entry_id "
+        "WHERE e.deleted_at IS NULL GROUP BY t.tag ORDER BY n DESC, t.tag")]
+
+
+def unlink(conn: sqlite3.Connection, entry_id: int, target_type: str, target_id: str) -> None:
+    """Explicit removal only — editing text never deletes links."""
+    conn.execute("DELETE FROM links WHERE entry_id=? AND target_type=? AND target_id=?",
+                 (entry_id, target_type, str(target_id)))
+    conn.commit()
+
+
+def backlinks(conn: sqlite3.Connection, entry_id: int) -> list[dict]:
+    """Entries that link TO this entry (via @entry:N or an explicit link)."""
+    return [dict(r) for r in conn.execute(
+        """SELECT e.id, e.kind, e.title, e.written_at, e.about_date, substr(e.body_md,1,160) AS excerpt
+           FROM links l JOIN entries e ON e.id=l.entry_id
+           WHERE l.target_type='entry' AND l.target_id=? AND e.deleted_at IS NULL
+           ORDER BY e.written_at""", (str(entry_id),))]
+
+
+def describe_links(conn: sqlite3.Connection, entry_id: int) -> list[dict]:
+    """This entry's outgoing links with human labels."""
+    out = []
+    for l in conn.execute("SELECT target_type, target_id FROM links WHERE entry_id=? ORDER BY id", (entry_id,)):
+        label = f"{l['target_type']} {l['target_id']}"
+        if l["target_type"] == "trade":
+            t = conn.execute("SELECT symbol, direction, session_date, net_pnl FROM trades WHERE id=?",
+                             (l["target_id"],)).fetchone()
+            label = (f"trade #{l['target_id']} {t['symbol']} {t['direction']} {t['session_date']} "
+                     f"({'+' if t['net_pnl'] >= 0 else '-'}${abs(t['net_pnl']):,.2f})") if t else f"trade #{l['target_id']} (no longer present)"
+        elif l["target_type"] == "entry":
+            e = conn.execute("SELECT title, kind, substr(body_md,1,50) b FROM entries WHERE id=?",
+                             (l["target_id"],)).fetchone()
+            label = f"entry #{l['target_id']}: {(e['title'] or e['b']) if e else '(missing)'}"
+        elif l["target_type"] == "session":
+            label = f"session {l['target_id']}"
+        elif l["target_type"] == "instrument":
+            label = f"@{l['target_id']}"
+        out.append({"target_type": l["target_type"], "target_id": l["target_id"], "label": label})
+    return out
 
 
 def entries_for_target(conn: sqlite3.Connection, target_type: str, target_id: str) -> list[sqlite3.Row]:

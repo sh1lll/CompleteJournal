@@ -68,6 +68,14 @@ class LivePlatformIn(BaseModel):
     platform: str
 
 
+class StatusIn(BaseModel):
+    status: str
+
+
+class TagIn(BaseModel):
+    tag: str
+
+
 class KeyIn(BaseModel):
     key: str
 
@@ -252,7 +260,8 @@ def create_app(db_path: str | Path, attachments_root: str | Path | None = None) 
                 "SELECT COUNT(*) FROM entry_versions WHERE entry_id=?", (entry_id,)
             ).fetchone()[0]
             return {"entry": dict(row), "addenda": [dict(a) for a in addenda],
-                    "links": [dict(l) for l in links], "n_versions": n_versions}
+                    "links": journal.describe_links(c, entry_id), "n_versions": n_versions,
+                    "tags": journal.tags_of(c, entry_id), "backlinks": journal.backlinks(c, entry_id)}
         finally:
             c.close()
 
@@ -288,6 +297,74 @@ def create_app(db_path: str | Path, attachments_root: str | Path | None = None) 
         c = conn()
         try:
             journal.link(c, entry_id, l.target_type, l.target_id)
+            return {"ok": True}
+        finally:
+            c.close()
+
+    from . import theses as thesesmod
+
+    @app.get("/api/theses")
+    def theses_list():
+        c = conn()
+        try:
+            return thesesmod.list_theses(c)
+        finally:
+            c.close()
+
+    @app.get("/api/theses/{entry_id}")
+    def thesis_thread(entry_id: int):
+        c = conn()
+        try:
+            return thesesmod.thread(c, entry_id)
+        except KeyError as e:
+            raise HTTPException(404, str(e))
+        finally:
+            c.close()
+
+    @app.post("/api/theses/{entry_id}/status")
+    def thesis_status(entry_id: int, body: StatusIn):
+        c = conn()
+        try:
+            thesesmod.set_status(c, entry_id, body.status)
+            return thesesmod.thread(c, entry_id)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+        finally:
+            c.close()
+
+    @app.get("/api/tags")
+    def list_tags():
+        c = conn()
+        try:
+            return journal.all_tags(c)
+        finally:
+            c.close()
+
+    @app.post("/api/entries/{entry_id}/tags")
+    def add_tag(entry_id: int, body: TagIn):
+        c = conn()
+        try:
+            journal.tag(c, entry_id, body.tag)
+            return {"tags": journal.tags_of(c, entry_id)}
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+        finally:
+            c.close()
+
+    @app.delete("/api/entries/{entry_id}/tags/{tag:path}")
+    def remove_tag(entry_id: int, tag: str):
+        c = conn()
+        try:
+            journal.untag(c, entry_id, tag)
+            return {"tags": journal.tags_of(c, entry_id)}
+        finally:
+            c.close()
+
+    @app.delete("/api/entries/{entry_id}/links/{target_type}/{target_id}")
+    def remove_link(entry_id: int, target_type: str, target_id: str):
+        c = conn()
+        try:
+            journal.unlink(c, entry_id, target_type, target_id)
             return {"ok": True}
         finally:
             c.close()

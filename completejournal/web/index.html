@@ -59,6 +59,21 @@ mark{background:transparent;color:var(--accent-ink);font-weight:700}
 .sim{font-size:.88rem}
 .sim .why{font-family:var(--mono);font-size:.68rem;color:var(--muted)}
 h3{font-size:1rem;margin:1.2rem 0 .4rem}
+.toolbar{display:flex;flex-wrap:wrap;gap:4px;margin:.4rem 0}
+.toolbar button{font-family:var(--mono);font-size:.78rem;min-width:2.1rem;padding:.25rem .5rem;border:1px solid var(--rule);background:var(--card);color:var(--fg);border-radius:5px;cursor:pointer}
+.toolbar button:hover{border-color:var(--accent)}
+.open-entry{cursor:pointer}
+.open-entry:hover{border-color:var(--accent)}
+.chip{display:inline-flex;align-items:center;gap:.3rem;font-family:var(--mono);font-size:.72rem;border:1px solid var(--rule);border-radius:999px;padding:.15em .6em;margin:.15rem .2rem .15rem 0}
+.chip button{border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:.9rem;padding:0}
+.addendum-card{border-left:3px solid var(--accent);margin:.6rem 0;padding:.4rem .9rem;background:var(--card);border-radius:0 6px 6px 0}
+.addendum-card .meta{font-family:var(--mono);font-size:.66rem;color:var(--muted)}
+.version{border:1px dashed var(--rule);border-radius:6px;padding:.5rem .8rem;margin:.4rem 0;font-size:.9rem}
+.tl{border-left:2px solid var(--rule);margin-left:.4rem;padding-left:1rem}
+.tl-item{position:relative;margin:.8rem 0}
+.tl-item::before{content:"";position:absolute;left:-1.42rem;top:.45rem;width:.6rem;height:.6rem;border-radius:50%;background:var(--accent)}
+.tl-item.trade::before{background:var(--muted)}
+.status-pill{font-family:var(--mono);font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;border-radius:999px;padding:.15em .6em;border:1px solid currentColor}
 .calgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:.8rem}
 .calgrid .dow{font-family:var(--mono);font-size:.6rem;text-transform:uppercase;color:var(--muted);text-align:center;padding:.2rem 0}
 .cal-day{border:1px solid var(--rule);border-radius:6px;min-height:62px;padding:.3rem .4rem;font-size:.72rem;cursor:pointer;background:var(--card)}
@@ -85,6 +100,7 @@ a{color:var(--accent-ink)}
   <nav id="nav">
     <button data-v="write" class="active">Write</button>
     <button data-v="journal">Journal</button>
+    <button data-v="theses">Theses</button>
     <button data-v="session">Day review</button>
     <button data-v="calendar">Calendar</button>
     <button data-v="trades">Trades</button>
@@ -110,6 +126,7 @@ a{color:var(--accent-ink)}
     <input id="w-title" placeholder="Title (optional)">
     <input id="w-about" type="date" title="Session date this entry is about (optional)">
   </div>
+  <div class="toolbar" data-for="w-body"></div>
   <textarea id="w-body" placeholder="Write freely. Markdown welcome. Type @ to link instruments (@MES), sessions (@2026-10-09), trades (@trade:12) or entries — links are created automatically on save."></textarea>
   <div id="w-mention" class="mention-box" hidden></div>
   <div id="w-preview" class="card" hidden></div>
@@ -133,6 +150,17 @@ a{color:var(--accent-ink)}
       <option>knowledge</option><option>psychology</option></select>
   </div>
   <div id="j-list"></div>
+</section>
+
+<section id="v-entry" hidden>
+  <div class="row" style="justify-content:space-between"><button class="ghost" id="e-back" style="flex:0 0 auto">← Back</button></div>
+  <div id="e-out"></div>
+</section>
+
+<section id="v-theses" hidden>
+  <h2>Theses</h2>
+  <p class="note">Tag any entry <code>thesis</code> (or use “Mark as thesis” on an entry). Every later entry that mentions it with <code>@entry:N</code>, and every trade linked from those entries, joins its thread — no extra forms.</p>
+  <div id="th-out"></div>
 </section>
 
 <section id="v-session" hidden>
@@ -282,13 +310,17 @@ function renderMarkdown(src){
     const li = ln.match(/^[-*] (.*)$/);
     if(li){ if(!inList){out.push('<ul style="margin:.3em 0">');inList=true;} out.push(`<li>${li[1]}</li>`); continue; }
     if(inList){ out.push('</ul>'); inList=false; }
+    const q = ln.match(/^&gt; ?(.*)$/);
+    if(q){ out.push(`<blockquote style="margin:.3em 0;padding-left:.8em;border-left:3px solid var(--rule);color:var(--muted)">${q[1]}</blockquote>`); continue; }
     out.push(ln === '' ? '<br>' : `<div>${ln}</div>`);
   }
   if(inList) out.push('</ul>');
   return out.join('')
     .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
     .replace(/(^|[^*])\*([^*\n]+)\*/g,'$1<em>$2</em>')
-    .replace(/`([^`]+)`/g,'<code>$1</code>');
+    .replace(/`([^`]+)`/g,'<code>$1</code>')
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>')
+    .replace(/^(-{3,})$/gm,'<hr>');
 }
 const cls = v => v>0?'pos':v<0?'neg':'';
 
@@ -301,6 +333,7 @@ document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>{
   if(v==='trades') loadTrades();
   if(v==='analytics') loadAnalytics();
   if(v==='calendar') loadCalendar();
+  if(v==='theses') loadTheses();
   if(v==='settings') { loadSettings(); loadLive(); loadPhone(); loadUpdates(); }
   if(v==='reports' && !$('#r-out').innerHTML) buildReport();
 });
@@ -413,7 +446,7 @@ $('#w-save').onclick = async () => {
 
 // journal list + search
 function entryCard(e, snippet){
-  return `<div class="card"><div class="meta">
+  return `<div class="card open-entry" data-entry="${e.id}" title="Open entry"><div class="meta">
     <span>#${e.id}</span>
     ${e.kind?`<span class="kind">${esc(e.kind)}</span>`:''}
     <span>written ${esc((e.written_at||'').slice(0,16).replace('T',' '))}Z</span>
@@ -777,6 +810,179 @@ async function loadUpdates(){
   $('#up-on') && ($('#up-on').onclick = () => updatePref(true));
 }
 loadUpdates();
+
+
+// ---------- formatting toolbar (markdown underneath: portable, future-proof) ----------
+function wrapSel(ta, before, after = before, placeholder = 'text'){
+  const [a, b] = [ta.selectionStart, ta.selectionEnd];
+  const sel = ta.value.slice(a, b) || placeholder;
+  ta.value = ta.value.slice(0, a) + before + sel + after + ta.value.slice(b);
+  ta.focus(); ta.setSelectionRange(a + before.length, a + before.length + sel.length);
+  ta.dispatchEvent(new Event('input'));
+}
+function prefixLines(ta, prefix){
+  const a = ta.value.lastIndexOf('\n', ta.selectionStart - 1) + 1;
+  const b = ta.selectionEnd;
+  const block = ta.value.slice(a, b) || '';
+  let n = 0;
+  const out = block.split('\n').map(l => prefix === '1. ' ? `${++n}. ${l}` : prefix + l).join('\n');
+  ta.value = ta.value.slice(0, a) + out + ta.value.slice(b);
+  ta.focus(); ta.setSelectionRange(a, a + out.length);
+}
+function attachToolbar(bar, ta){
+  const tools = [
+    ['B', 'Bold (Ctrl+B)', () => wrapSel(ta, '**')], ['I', 'Italic (Ctrl+I)', () => wrapSel(ta, '*')],
+    ['H', 'Heading', () => prefixLines(ta, '## ')], ['•', 'Bullet list', () => prefixLines(ta, '- ')],
+    ['1.', 'Numbered list', () => prefixLines(ta, '1. ')], ['❝', 'Quote', () => prefixLines(ta, '> ')],
+    ['</>', 'Code', () => wrapSel(ta, '`')], ['🔗', 'Link', () => wrapSel(ta, '[', '](https://)', 'link text')],
+    ['—', 'Divider', () => { const p = ta.selectionStart; ta.value = ta.value.slice(0,p) + '\n---\n' + ta.value.slice(p); ta.focus(); }],
+    ['@', 'Link a trade, instrument, day or entry', () => { const p = ta.selectionStart; ta.value = ta.value.slice(0,p) + '@' + ta.value.slice(p); ta.focus(); ta.setSelectionRange(p+1,p+1); ta.dispatchEvent(new Event('input')); }],
+  ];
+  bar.innerHTML = tools.map((t, i) => `<button type="button" data-i="${i}" title="${t[1]}" aria-label="${t[1]}">${t[0]}</button>`).join('');
+  bar.querySelectorAll('button').forEach(b => b.onclick = () => tools[+b.dataset.i][2]());
+  ta.addEventListener('keydown', e => {
+    if(!(e.ctrlKey || e.metaKey)) return;
+    if(e.key === 'b'){ e.preventDefault(); wrapSel(ta, '**'); }
+    if(e.key === 'i'){ e.preventDefault(); wrapSel(ta, '*'); }
+  });
+}
+attachToolbar(document.querySelector('.toolbar[data-for="w-body"]'), $('#w-body'));
+
+// ---------- navigation helper ----------
+let lastView = 'journal';
+function show(v){
+  document.querySelectorAll('#nav button').forEach(x => x.classList.toggle('active', x.dataset.v === v));
+  document.querySelectorAll('main section').forEach(sec => sec.hidden = sec.id !== 'v-' + v);
+  window.scrollTo(0, 0);
+}
+document.addEventListener('click', ev => {
+  const card = ev.target.closest('.open-entry');
+  if(!card || ev.target.closest('a,button,img,input,textarea')) return;
+  const active = document.querySelector('#nav button.active');
+  if(active) lastView = active.dataset.v;
+  openEntry(+card.dataset.entry);
+});
+$('#e-back').onclick = () => { document.querySelector(`#nav button[data-v="${lastView}"]`)?.click() || show('journal'); };
+
+// ---------- entry page: edit (versioned), addenda, history, tags, links ----------
+async function openEntry(id){
+  show('entry');
+  const d = await api('/api/entries/' + id);
+  const e = d.entry, isThesis = d.tags.includes('thesis');
+  $('#e-out').innerHTML = `
+    <div class="card">
+      <div class="meta"><span>#${e.id}</span>${e.kind?`<span class="kind">${esc(e.kind)}</span>`:''}
+        <span>written ${esc(e.written_at.slice(0,16).replace('T',' '))}Z</span>${e.about_date?`<span>about ${esc(e.about_date)}</span>`:''}
+        <span>${d.n_versions} version${d.n_versions>1?'s':''}</span>${e.deleted_at?'<span class="warn">deleted</span>':''}</div>
+      ${e.title?`<h2 style="margin:.2rem 0 .5rem">${esc(e.title)}</h2>`:''}
+      <div class="body" id="e-body">${renderMarkdown(e.body_md)}</div>
+      <div id="e-edit" hidden>
+        <div class="toolbar" id="e-toolbar"></div>
+        <input id="e-title" placeholder="Title (optional)" value="${esc(e.title||'')}">
+        <textarea id="e-text" style="margin-top:.4rem">${esc(e.body_md)}</textarea>
+        <p class="note">Saving keeps the previous version in the history — nothing you wrote is overwritten. To add what you learned later without changing the original, use “What I learned later” below instead.</p>
+        <div class="row"><button class="primary" id="e-save">Save new version</button><button class="ghost" id="e-cancel">Cancel</button></div>
+      </div>
+      <div class="row" id="e-actions">
+        <button class="ghost" id="e-editbtn">Edit</button>
+        <button class="ghost" id="e-thesis">${isThesis?'Open thesis thread':'Mark as thesis'}</button>
+        <button class="ghost" id="e-sim">Seen this before?</button>
+        <button class="ghost" id="e-del" style="color:var(--neg)">Delete</button>
+      </div>
+    </div>
+
+    <h3>What I learned later</h3>
+    ${d.addenda.map(a=>`<div class="addendum-card"><div class="meta">added ${esc(a.written_at.slice(0,16).replace('T',' '))}Z</div><div class="body">${renderMarkdown(a.body_md)}</div></div>`).join('') || '<p class="note">Nothing added yet. Hindsight goes here, kept apart from what you believed at the time.</p>'}
+    <textarea id="e-add" placeholder="Looking back, what do you know now that you didn't then?" style="min-height:90px"></textarea>
+    <div class="row"><button class="primary" id="e-addbtn">Add note</button></div>
+
+    <h3>Tags</h3>
+    <div id="e-tags">${d.tags.map(t=>`<span class="chip">${esc(t)}<button data-tag="${esc(t)}" title="Remove tag" aria-label="Remove tag ${esc(t)}">×</button></span>`).join('') || '<span class="note">No tags.</span>'}</div>
+    <div class="row"><input id="e-tag" placeholder="Add a tag, e.g. mistake/chased or setup/orb" list="e-taglist"><datalist id="e-taglist"></datalist><button class="ghost" id="e-tagbtn" style="flex:0 0 auto">Add tag</button></div>
+
+    <h3>Links</h3>
+    <div>${d.links.map(l=>`<span class="chip">${esc(l.label)}<button data-unlink="${esc(l.target_type)}|${esc(l.target_id)}" title="Remove link" aria-label="Remove link">×</button></span>`).join('') || '<span class="note">Mention @MES, @2026-10-09, @trade:12 or @entry:5 in the text to link.</span>'}</div>
+    ${d.backlinks.length?`<h3>Mentioned by</h3>${d.backlinks.map(b=>entryCard({...b, body_md:b.excerpt})).join('')}`:''}
+
+    <h3>Version history</h3>
+    <div id="e-versions"><button class="ghost" id="e-vbtn">Show ${d.n_versions} version${d.n_versions>1?'s':''}</button></div>
+    <div id="e-simout"></div>`;
+
+  attachToolbar($('#e-toolbar'), $('#e-text'));
+  $('#e-editbtn').onclick = () => { $('#e-edit').hidden = false; $('#e-body').hidden = true; $('#e-actions').hidden = true; $('#e-text').focus(); };
+  $('#e-cancel').onclick = () => openEntry(id);
+  $('#e-save').onclick = async () => {
+    const body = $('#e-text').value.trim(); if(!body) return;
+    await api('/api/entries/'+id, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({body_md: body, title: $('#e-title').value.trim() || null})});
+    openEntry(id);
+  };
+  $('#e-addbtn').onclick = async () => {
+    const body = $('#e-add').value.trim(); if(!body) return;
+    await api(`/api/entries/${id}/addenda`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({body_md: body})});
+    openEntry(id);
+  };
+  const addTag = async () => {
+    const t = $('#e-tag').value.trim(); if(!t) return;
+    try { await api(`/api/entries/${id}/tags`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({tag: t})}); openEntry(id); }
+    catch(err){ $('#e-tag').value = ''; $('#e-tag').placeholder = err.message; }
+  };
+  $('#e-tagbtn').onclick = addTag;
+  $('#e-tag').addEventListener('keydown', ev => { if(ev.key === 'Enter') addTag(); });
+  api('/api/tags').then(ts => $('#e-taglist').innerHTML = ts.map(t => `<option value="${esc(t.tag)}">`).join(''));
+  document.querySelectorAll('#e-tags [data-tag]').forEach(b => b.onclick = async () => {
+    await api(`/api/entries/${id}/tags/${b.dataset.tag.split('/').map(encodeURIComponent).join('/')}`, {method:'DELETE'}); openEntry(id);
+  });
+  document.querySelectorAll('[data-unlink]').forEach(b => b.onclick = async () => {
+    const [tt, tid] = b.dataset.unlink.split('|');
+    await api(`/api/entries/${id}/links/${encodeURIComponent(tt)}/${encodeURIComponent(tid)}`, {method:'DELETE'}); openEntry(id);
+  });
+  $('#e-vbtn').onclick = async () => {
+    const vs = await api(`/api/entries/${id}/versions`);
+    $('#e-versions').innerHTML = vs.map((v, i) => `<div class="version"><div class="meta note">version ${i+1} · saved ${esc(v.saved_at.slice(0,16).replace('T',' '))}Z${i===0?' · original':''}${i===vs.length-1?' · current':''}</div><div class="body">${renderMarkdown(v.body_md)}</div></div>`).join('');
+  };
+  $('#e-thesis').onclick = async () => {
+    if(!isThesis) await api(`/api/entries/${id}/tags`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({tag:'thesis'})});
+    openThesis(id);
+  };
+  $('#e-sim').onclick = async () => { $('#e-simout').innerHTML = '<h3>Seen this before?</h3>' + similarList(await api('/api/similar?entry_id='+id), 'Nothing similar in other entries.'); };
+  $('#e-del').onclick = async () => {
+    if($('#e-del').dataset.confirm !== '1'){ $('#e-del').dataset.confirm = '1'; $('#e-del').textContent = 'Click again to delete (history is kept)'; return; }
+    await api('/api/entries/'+id, {method:'DELETE'}); show('journal'); loadJournal();
+  };
+}
+
+// ---------- theses ----------
+const statusColor = st => ({confirmed:'var(--pos)', invalidated:'var(--neg)', mixed:'var(--accent-ink)', open:'var(--muted)'}[st]);
+async function loadTheses(){
+  const list = await api('/api/theses');
+  $('#th-out').innerHTML = list.length ? list.map(t => `<div class="card open-thesis" data-thesis="${t.id}" style="cursor:pointer">
+      <div class="meta"><span>#${t.id}</span><span class="status-pill" style="color:${statusColor(t.status)}">${esc(t.status)}</span>
+      <span>${esc((t.about_date || t.written_at).slice(0,10))}</span><span>${t.entries} entr${t.entries===1?'y':'ies'} · ${t.trades} trade${t.trades===1?'':'s'}${t.trades?` · ${money(t.net_pnl)}`:''}</span></div>
+      ${t.title?`<strong>${esc(t.title)}</strong> `:''}${esc(t.excerpt)}</div>`).join('')
+    : '<p class="note">No theses yet. Open any entry and choose “Mark as thesis”.</p>';
+  document.querySelectorAll('.open-thesis').forEach(c => c.onclick = () => openThesis(+c.dataset.thesis));
+}
+async function openThesis(id){
+  show('theses');
+  const t = await api('/api/theses/' + id);
+  const item = x => {
+    if(x.type === 'trade'){ const tr = x.trade;
+      return `<div class="tl-item trade"><div class="note">${esc(x.at.slice(0,16).replace('T',' '))}Z · trade #${tr.id}</div>${esc(tr.symbol)} ${esc(tr.direction)} ×${tr.qty_max} · <span class="${cls(tr.net_pnl)}">${money(tr.net_pnl)}</span></div>`; }
+    if(x.type === 'addendum') return `<div class="tl-item"><div class="note">${esc(x.at.slice(0,16).replace('T',' '))}Z · learned later</div><div class="addendum-card">${renderMarkdown(x.addendum.body_md)}</div></div>`;
+    const e = x.entry;
+    return `<div class="tl-item"><div class="note">${esc(x.at.slice(0,16).replace('T',' '))}Z · ${x.type==='thesis'?'<strong>thesis</strong>':esc(e.kind||'entry')}</div>${entryCard(e)}</div>`;
+  };
+  $('#th-out').innerHTML = `<div class="row"><button class="ghost" id="th-back" style="flex:0 0 auto">← All theses</button></div>
+    <h3>${esc(t.thesis.title || 'Thesis #' + t.thesis.id)} <span class="status-pill" style="color:${statusColor(t.status)}">${esc(t.status)}</span></h3>
+    <p class="note">${t.entries.length} entr${t.entries.length===1?'y':'ies'} · ${t.trades.length} trade${t.trades.length===1?'':'s'}${t.trades.length?` · net ${money(t.net_pnl)}`:''}. How did it turn out?
+      ${['open','confirmed','invalidated','mixed'].map(st=>`<button class="ghost" data-st="${st}" style="padding:.2rem .6rem;${t.status===st?'border-color:var(--accent)':''}">${st}</button>`).join(' ')}</p>
+    <div class="tl">${t.timeline.map(item).join('')}</div>
+    <p class="note">To add to this thread, mention <code>@entry:${t.thesis.id}</code> in any new entry.</p>`;
+  $('#th-back').onclick = loadTheses;
+  document.querySelectorAll('[data-st]').forEach(b => b.onclick = async () => {
+    await api(`/api/theses/${id}/status`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({status: b.dataset.st})}); openThesis(id);
+  });
+}
 
 // demo data
 $('#d-add').onclick = async () => {
