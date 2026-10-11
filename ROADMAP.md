@@ -27,7 +27,7 @@
 - 🚩 **A3**: Pricing/policy figures labeled [U] in the assessment must be re-verified before money is spent.
 - 🚩 **A4**: Platform-specific CSV importers are built against *documented* export layouts (synthetic fixtures); they must be validated against real export files from each platform before being trusted. The generic mapping importer is the safe path meanwhile.
 
-## Phase 1 — MVP: capture + journal core 🔄 (core built 2026-10-11, 32 tests passing)
+## Phase 1 — MVP: capture + journal core 🔄 (core built 2026-10-11, 38 tests passing)
 
 | Item | Status | Notes |
 |---|---|---|
@@ -41,10 +41,10 @@
 | Web UI: write / journal+search / session timeline / trades+detail / analytics / import | ✅ MVP | textarea editor; **TipTap upgrade deferred to Phase 2/5** |
 | CLI: init/import/rebuild/stats/reconcile/write/search/serve | ✅ | `python -m completejournal …` |
 | Live verification | ✅ | CLI + HTTP smoke test: 3 platforms imported, P&L hand-checked (MES $52.50, ES $83.32, NQ $190.00) |
-| Markdown/git export mirror + full data export | ⏳ next | J9 requirement |
-| Attachments upload (schema exists) + image paste | ⏳ | |
-| Month-grid calendar UI (API endpoint exists) | ⏳ | |
-| Litestream backup setup docs | ⏳ | |
+| Markdown/git export mirror + full data export | ✅ | `export.py`; CLI `export`; YAML front matter, CSV/JSON dumps |
+| Attachments upload + clipboard image paste | ✅ | content-addressed, integrity-verified (`attachments.py`) |
+| Month-grid calendar UI (P&L + writing density) | ✅ | day click opens session timeline |
+| Backup & durability guide | ✅ | `docs/BACKUP.md` (Litestream + markdown mirror + restore drills) |
 
 **Interim habits (zero code):** daily writing in markdown/Obsidian; daily CSV export ritual into `data/raw/<date>/` (gitignored).
 
