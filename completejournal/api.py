@@ -14,6 +14,7 @@ from pydantic import BaseModel
 
 from fastapi.responses import Response
 
+from . import __version__
 from . import ai, excursions, plan as planmod, recap as recapmod, reports, similar
 from . import analytics, attachments as attmod, bars as barsmod, behavior, db as dbmod, journal, reconstruction
 from .importers import base as impbase
@@ -42,6 +43,21 @@ class AddendumIn(BaseModel):
     body_md: str
 
 
+class CaptureIn(BaseModel):
+    body: str = ""
+    client_id: str
+    captured_at: str | None = None
+    attachment_ids: list[int] = []
+
+
+class PhoneEnableIn(BaseModel):
+    port: int | None = None
+
+
+class UpdatePrefIn(BaseModel):
+    enabled: bool
+
+
 class LiveConnectIn(BaseModel):
     platform: str
     credentials: dict = {}
@@ -67,8 +83,53 @@ class GradeIn(BaseModel):
 
 def create_app(db_path: str | Path, attachments_root: str | Path | None = None) -> FastAPI:
     from contextlib import asynccontextmanager
-    from . import live as livemod, live_setup
+    from . import live as livemod, live_setup, phone as phonemod
     manager = livemod.LiveManager()
+
+    class PhoneServer:
+        """Second listener on the local network, same app, phone-only access."""
+        def __init__(self):
+            self.server = self.thread = None
+            self.port = None
+
+        def start(self, port: int):
+            import threading
+            import uvicorn
+            self.stop()
+            # lifespan off: the main server owns startup/shutdown; running it here
+            # would start a second phone listener from inside this one
+            cfg = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="warning",
+                                 access_log=False, lifespan="off")
+            server = uvicorn.Server(cfg)
+            server.install_signal_handlers = lambda: None
+            def run():
+                try:
+                    server.run()
+                except SystemExit:  # uvicorn exits on bind failure; reported below instead
+                    pass
+            thread = threading.Thread(target=run, daemon=True, name="phone-listener")
+            thread.start()
+            import time
+            deadline = time.time() + 5
+            while not server.started and thread.is_alive() and time.time() < deadline:
+                time.sleep(0.02)
+            if not server.started:
+                server.should_exit = True
+                thread.join(timeout=2)
+                raise OSError(f"could not listen on port {port} (is another program using it?)")
+            self.server, self.thread, self.port = server, thread, port
+
+        def stop(self):
+            if self.server:
+                self.server.should_exit = True
+                self.thread.join(timeout=5)
+            self.server = self.thread = self.port = None
+
+        @property
+        def running(self) -> bool:
+            return bool(self.thread and self.thread.is_alive())
+
+    phone_server = PhoneServer()
 
     def _start_live(platform: str, creds: dict):
         proto, sweep = live_setup.build(platform, creds, db_path)
@@ -85,11 +146,53 @@ def create_app(db_path: str | Path, attachments_root: str | Path | None = None) 
                     _start_live(platform, creds)
                 except Exception:
                     pass
+        c0 = dbmod.connect(db_path)
+        try:
+            if phonemod.setting(c0, "phone_enabled") == "1":
+                try:
+                    phone_server.start(int(phonemod.setting(c0, "phone_port", str(phonemod.PHONE_PORT_DEFAULT))))
+                except OSError:
+                    pass
+        finally:
+            c0.close()
         yield
         manager.stop_all()
+        phone_server.stop()
 
-    app = FastAPI(title="Complete Journal", version="0.1.0", lifespan=lifespan)
+    app = FastAPI(title="Complete Journal", version=__version__, lifespan=lifespan)
     att_root = Path(attachments_root) if attachments_root else Path(str(db_path) + ".attachments")
+    # ----------------------------------------------- device access gate
+    from fastapi import Request
+    from fastapi.responses import RedirectResponse
+
+    @app.middleware("http")
+    async def phone_gate(request: Request, call_next):
+        host = request.client.host if request.client else None
+        if phonemod.is_loopback(host):
+            return await call_next(request)
+        c = dbmod.connect(db_path)
+        try:
+            enabled = phonemod.setting(c, "phone_enabled") == "1"
+            path = request.url.path
+            if enabled and path == "/capture" and request.query_params.get("pair"):
+                if phonemod.token_ok(c, request.query_params["pair"]):
+                    resp = RedirectResponse("/capture", status_code=303)  # drop the token from the URL
+                    resp.set_cookie(phonemod.COOKIE, request.query_params["pair"], max_age=365 * 86400,
+                                    httponly=True, samesite="strict")
+                    return resp
+            paired = enabled and phonemod.token_ok(c, request.cookies.get(phonemod.COOKIE))
+        finally:
+            c.close()
+        if paired and phonemod.phone_may_access(request.method, path):
+            return await call_next(request)
+        if path == "/capture":
+            return HTMLResponse(
+                "<!doctype html><meta name=viewport content='width=device-width,initial-scale=1'>"
+                "<title>Pair this phone</title><body style='font-family:system-ui;padding:24px;max-width:30em'>"
+                "<h2>Pair this phone first</h2><p>On your computer open Complete Journal &rarr; "
+                "Settings &rarr; Phone, and scan the QR code with this phone.</p></body>", status_code=403)
+        return JSONResponse(status_code=403, content={"detail": "not available from this device"})
+
     # create/upgrade the database at launch so a locked or corrupt file fails
     # immediately and clearly, not halfway through someone's writing
     dbmod.connect(db_path).close()
@@ -405,6 +508,122 @@ def create_app(db_path: str | Path, attachments_root: str | Path | None = None) 
                     "reason": "no price bars stored for this trade's window"}
         finally:
             c.close()
+
+    # --------------------------------------------------------- updates
+    from . import updates as updmod
+
+    @app.get("/api/updates")
+    def updates_status():
+        c = conn()
+        try:
+            return updmod.check(c)
+        finally:
+            c.close()
+
+    @app.post("/api/updates/preference")
+    def updates_pref(body: UpdatePrefIn):
+        c = conn()
+        try:
+            updmod.set_preference(c, body.enabled)
+            return updmod.check(c)
+        finally:
+            c.close()
+
+    @app.post("/api/updates/check")
+    def updates_check_now():
+        c = conn()
+        try:
+            return updmod.check(c, force=True)
+        finally:
+            c.close()
+
+    # ---------------------------------------------- phone quick-capture
+    def _web(name: str) -> str:
+        return resources.files("completejournal").joinpath(f"web/{name}").read_text()
+
+    @app.get("/capture", response_class=HTMLResponse)
+    def capture_page():
+        return _web("capture.html")
+
+    @app.get("/manifest.webmanifest")
+    def manifest():
+        return Response(_web("manifest.webmanifest"), media_type="application/manifest+json")
+
+    @app.get("/sw.js")
+    def service_worker():
+        return Response(_web("sw.js"), media_type="text/javascript")
+
+    @app.get("/icon.svg")
+    def icon():
+        return Response(_web("icon.svg"), media_type="image/svg+xml")
+
+    @app.post("/api/capture")
+    def capture(body: CaptureIn):
+        c = conn()
+        try:
+            return phonemod.save_capture(c, body.body, client_id=body.client_id,
+                                         captured_at=body.captured_at, attachment_ids=body.attachment_ids)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+        finally:
+            c.close()
+
+    @app.get("/api/capture/recent")
+    def capture_recent():
+        c = conn()
+        try:
+            return phonemod.recent(c)
+        finally:
+            c.close()
+
+    @app.get("/api/phone/status")
+    def phone_status():
+        c = conn()
+        try:
+            enabled = phonemod.setting(c, "phone_enabled") == "1"
+            port = int(phonemod.setting(c, "phone_port", str(phonemod.PHONE_PORT_DEFAULT)))
+            out = {"enabled": enabled, "listening": phone_server.running, "port": port}
+            if enabled:
+                url = f"http://{phonemod.lan_ip()}:{port}/capture?pair={phonemod.get_token(c)}"
+                out.update({"pair_url": url, "qr_svg": phonemod.qr_svg(url)})
+            return out
+        finally:
+            c.close()
+
+    @app.post("/api/phone/enable")
+    def phone_enable(body: PhoneEnableIn):
+        c = conn()
+        try:
+            port = body.port or int(phonemod.setting(c, "phone_port", str(phonemod.PHONE_PORT_DEFAULT)))
+            try:
+                phone_server.start(port)
+            except OSError as e:
+                raise HTTPException(409, f"port {port} unavailable: {e}")
+            phonemod.set_setting(c, "phone_enabled", "1")
+            phonemod.set_setting(c, "phone_port", str(port))
+            phonemod.get_token(c)
+        finally:
+            c.close()
+        return phone_status()
+
+    @app.post("/api/phone/disable")
+    def phone_disable():
+        phone_server.stop()
+        c = conn()
+        try:
+            phonemod.set_setting(c, "phone_enabled", "0")
+        finally:
+            c.close()
+        return {"enabled": False}
+
+    @app.post("/api/phone/unpair-all")
+    def phone_unpair():
+        c = conn()
+        try:
+            phonemod.rotate_token(c)
+        finally:
+            c.close()
+        return phone_status()
 
     # ---------------------------------------------- live connections
     app.state.live = manager

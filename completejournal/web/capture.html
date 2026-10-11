@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f6f54">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Capture">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon.svg">
+<link rel="apple-touch-icon" href="/icon.svg">
+<title>Quick capture</title>
+<style>
+:root{--bg:#faf8f4;--fg:#26231d;--muted:#6e675c;--rule:#ddd6c8;--card:#f1ede3;--accent:#1f6f54;--accent-ink:#17543f;--warn:#9d3b2d}
+@media (prefers-color-scheme: dark){:root{--bg:#191714;--fg:#e8e3d8;--muted:#a39a8a;--rule:#3a362e;--card:#221f1a;--accent:#5db897;--accent-ink:#7fcbab;--warn:#d06a57;color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--fg);font:17px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:560px;margin:0 auto;padding:calc(12px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom))}
+header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+h1{font-size:1.05rem;margin:0}
+#clock{font-variant-numeric:tabular-nums;color:var(--muted);font-size:.9rem}
+textarea{width:100%;min-height:34vh;font:inherit;font-size:1.1rem;padding:14px;border:1px solid var(--rule);border-radius:12px;background:var(--card);color:var(--fg);resize:vertical}
+textarea:focus{outline:2px solid var(--accent);outline-offset:1px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.chips button{font:inherit;font-size:.9rem;padding:8px 14px;border-radius:999px;border:1px solid var(--rule);background:transparent;color:var(--fg)}
+.row{display:flex;gap:10px;margin-top:6px}
+.photo{flex:0 0 auto;display:flex;align-items:center;justify-content:center;width:56px;border:1px solid var(--rule);border-radius:12px;font-size:1.4rem;cursor:pointer;background:var(--card)}
+.photo input{display:none}
+#save{flex:1;font:inherit;font-weight:600;font-size:1.1rem;padding:16px;border:0;border-radius:12px;background:var(--accent);color:#fff}
+#save:disabled{opacity:.6}
+#thumbs{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+#thumbs img{width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--rule)}
+#msg{min-height:1.4em;margin:10px 0;font-size:.95rem}
+#msg.warn{color:var(--warn)}
+#queue{font-size:.85rem;color:var(--muted)}
+h2{font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:22px 0 8px}
+.item{padding:10px 12px;border:1px solid var(--rule);border-radius:10px;margin-bottom:8px;background:var(--card);font-size:.92rem}
+.item time{display:block;font-size:.75rem;color:var(--muted)}
+</style>
+</head>
+<body>
+<main>
+  <header><h1>Quick capture</h1><span id="clock"></span></header>
+  <textarea id="body" placeholder="What are you seeing, thinking, feeling? @MES links an instrument." autofocus></textarea>
+  <div class="chips" id="chips">
+    <button data-p="Idea: ">Idea</button>
+    <button data-p="Level: ">Level</button>
+    <button data-p="Mistake: ">Mistake</button>
+    <button data-p="Feeling: ">Feeling</button>
+    <button data-p="Thesis change: ">Thesis change</button>
+  </div>
+  <div class="row">
+    <label class="photo" title="Add a photo">📷<input id="photo" type="file" accept="image/*" capture="environment" multiple></label>
+    <button id="save">Save note</button>
+  </div>
+  <div id="thumbs"></div>
+  <div id="msg" role="status"></div>
+  <div id="queue"></div>
+  <h2>Today from this phone</h2>
+  <div id="recent"></div>
+</main>
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => (s ?? '').toString().replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let photos = [];
+
+// ---- clock (the note keeps the moment you wrote it, even if sent later)
+const tick = () => { $('#clock').textContent = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); };
+tick(); setInterval(tick, 15000);
+
+// ---- quick prefixes
+$('#chips').addEventListener('click', e => {
+  const p = e.target.dataset.p; if (!p) return;
+  const ta = $('#body'); ta.value = (ta.value ? ta.value.replace(/\s*$/, '\n') : '') + p; ta.focus();
+});
+
+// ---- photos
+$('#photo').addEventListener('change', e => {
+  for (const f of e.target.files) photos.push(f);
+  e.target.value = '';
+  $('#thumbs').innerHTML = photos.map(f => `<img src="${URL.createObjectURL(f)}" alt="photo">`).join('');
+});
+
+// ---- offline queue in IndexedDB (stores photos as blobs)
+function idb() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open('cj-capture', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('queue', {keyPath: 'client_id'});
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  });
+}
+async function qAll() { const db = await idb(); return new Promise(r => { const t = db.transaction('queue').objectStore('queue').getAll(); t.onsuccess = () => r(t.result); }); }
+async function qPut(item) { const db = await idb(); return new Promise(r => { const t = db.transaction('queue', 'readwrite'); t.objectStore('queue').put(item); t.oncomplete = r; }); }
+async function qDel(id) { const db = await idb(); return new Promise(r => { const t = db.transaction('queue', 'readwrite'); t.objectStore('queue').delete(id); t.oncomplete = r; }); }
+
+async function send(item) {
+  const ids = [];
+  for (const blob of item.photos || []) {
+    const fd = new FormData(); fd.append('file', blob, blob.name || 'photo.jpg');
+    const r = await fetch('/api/attachments', {method: 'POST', body: fd, credentials: 'same-origin'});
+    if (!r.ok) throw new Error('photo upload failed (' + r.status + ')');
+    ids.push((await r.json()).id);
+  }
+  const r = await fetch('/api/capture', {method: 'POST', credentials: 'same-origin',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({body: item.body, client_id: item.client_id, captured_at: item.captured_at, attachment_ids: ids})});
+  if (r.status === 403) throw Object.assign(new Error('This phone is not paired any more.'), {fatal: true});
+  if (!r.ok) throw new Error('save failed (' + r.status + ')');
+  return r.json();
+}
+
+let flushing = false;
+async function flush() {
+  if (flushing) return; flushing = true;
+  try {
+    for (const item of await qAll()) {
+      try { await send(item); await qDel(item.client_id); }
+      catch (e) { if (e.fatal) setMsg(e.message, true); break; }
+    }
+  } finally { flushing = false; showQueue(); loadRecent(); }
+}
+async function showQueue() {
+  const n = (await qAll()).length;
+  $('#queue').textContent = n ? `${n} note${n > 1 ? 's' : ''} waiting on this phone — will send when connected.` : '';
+}
+function setMsg(t, warn) { $('#msg').textContent = t; $('#msg').className = warn ? 'warn' : ''; }
+
+$('#save').onclick = async () => {
+  const body = $('#body').value.trim();
+  if (!body && !photos.length) { setMsg('Write something or add a photo first.', true); return; }
+  const item = {client_id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random()),
+                body, captured_at: new Date().toISOString(), photos: photos.slice()};
+  $('#save').disabled = true;
+  await qPut(item);                      // saved on the phone first: nothing is lost
+  $('#body').value = ''; photos = []; $('#thumbs').innerHTML = '';
+  try { await send(item); await qDel(item.client_id); setMsg('Saved to your journal.'); }
+  catch (e) { setMsg(e.fatal ? e.message : 'No connection — kept on this phone, will send automatically.', !!e.fatal); }
+  $('#save').disabled = false; showQueue(); loadRecent(); $('#body').focus();
+};
+
+async function loadRecent() {
+  try {
+    const r = await fetch('/api/capture/recent', {credentials: 'same-origin'});
+    if (!r.ok) return;
+    const items = await r.json();
+    $('#recent').innerHTML = items.map(i => `<div class="item"><time>${esc(new Date(i.written_at).toLocaleString([], {hour:'2-digit', minute:'2-digit', month:'short', day:'numeric'}))}</time>${esc(i.excerpt)}</div>`).join('')
+      || '<div class="item">Nothing yet today.</div>';
+  } catch (e) {}
+}
+
+window.addEventListener('online', flush);
+setInterval(flush, 20000);
+flush();
+if ('serviceWorker' in navigator && window.isSecureContext) navigator.serviceWorker.register('/sw.js').catch(() => {});
+</script>
+</body>
+</html>

@@ -27,15 +27,22 @@ def create_entry(
     title: str | None = None,
     about_date: str | None = None,
     author: str = "trader",
+    written_at: str | None = None,
 ) -> int:
     if kind is not None and kind not in KINDS:
         raise ValueError(f"unknown kind {kind!r}")
     if author not in ("trader", "template"):
         raise ValueError("AI content must be stored in ai_artifacts, not entries")
-    cur = conn.execute(
-        "INSERT INTO entries(kind, title, body_md, about_date, author) VALUES (?,?,?,?,?)",
-        (kind, title, body_md, about_date, author),
-    )
+    if written_at:
+        cur = conn.execute(
+            "INSERT INTO entries(kind, title, body_md, about_date, author, written_at) VALUES (?,?,?,?,?,?)",
+            (kind, title, body_md, about_date, author, written_at),
+        )
+    else:
+        cur = conn.execute(
+            "INSERT INTO entries(kind, title, body_md, about_date, author) VALUES (?,?,?,?,?)",
+            (kind, title, body_md, about_date, author),
+        )
     entry_id = cur.lastrowid
     conn.execute(
         "INSERT INTO entry_versions(entry_id, body_md, title) VALUES (?,?,?)",

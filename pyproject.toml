@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "completejournal"
-version = "0.1.0"
+version = "0.2.0"
 description = "Journal-first automated trading journal: universal trade capture, freeform reflection, honest analytics."
 requires-python = ">=3.11"
 dependencies = ["fastapi>=0.110", "uvicorn>=0.29", "python-multipart>=0.0.9", "httpx>=0.27", "websockets>=13", "qrcode>=7.4", "tzdata; sys_platform == \"win32\""]

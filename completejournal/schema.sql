@@ -201,6 +201,15 @@ CREATE TABLE IF NOT EXISTS bars (
     PRIMARY KEY (symbol, resolution, ts_utc)
 );
 
+-- -------------------------------------------------------------- capture_log
+-- Phone captures are retried until acknowledged (possibly after being
+-- offline); client_id makes each capture land exactly once.
+CREATE TABLE IF NOT EXISTS capture_log (
+    client_id TEXT PRIMARY KEY,
+    entry_id  INTEGER NOT NULL REFERENCES entries(id),
+    received_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+
 -- --------------------------------------------------------------------- FTS
 CREATE VIRTUAL TABLE IF NOT EXISTS entries_fts USING fts5(
     title, body_md, content='entries', content_rowid='id'
