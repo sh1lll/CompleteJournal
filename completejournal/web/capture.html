@@ -112,12 +112,17 @@ async function send(item) {
 let flushing = false;
 async function flush() {
   if (flushing) return; flushing = true;
+  let sent = 0;
   try {
     for (const item of await qAll()) {
-      try { await send(item); await qDel(item.client_id); }
+      try { await send(item); await qDel(item.client_id); sent++; }
       catch (e) { if (e.fatal) setMsg(e.message, true); break; }
     }
-  } finally { flushing = false; showQueue(); loadRecent(); }
+  } finally {
+    flushing = false;
+    if (sent) setMsg(`Back online — sent ${sent} saved note${sent > 1 ? 's' : ''} to your journal.`);
+    showQueue(); loadRecent();
+  }
 }
 async function showQueue() {
   const n = (await qAll()).length;

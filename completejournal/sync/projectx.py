@@ -56,10 +56,12 @@ class ProjectXClient:
 
     def authenticate(self) -> None:
         r = self._http.post("/api/Auth/loginKey", json=self._creds)
+        if r.status_code in (401, 403):
+            raise PermissionError("ProjectX rejected the username or API key")
         r.raise_for_status()
         data = r.json()
         if not data.get("success", False):
-            raise RuntimeError(f"ProjectX auth failed: {data.get('errorMessage')}")
+            raise PermissionError(f"ProjectX auth failed: {data.get('errorMessage')}")
         self._token = data["token"]
 
     def fresh_token(self) -> str:

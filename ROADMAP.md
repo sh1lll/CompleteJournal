@@ -96,8 +96,23 @@ Breakdowns with n + confidence intervals · MAE/MFE · slippage · behavioral fl
 | PyInstaller spec (data files explicit, AI bundled but off) | ✅ | Linux build produced and run here: UI, import, demo, recap, reports all verified from the packaged binary |
 | GitHub Actions: build + headless smoke test on Windows/macOS/Linux, release on `v*` tags | ✅ written | smoke step verified locally; 🚩 Windows/macOS jobs run for the first time on GitHub |
 | Code signing (Windows Authenticode, Apple Developer ID + notarization) | 🚩 needs user | paid certificates (~$99/yr Apple; ~$100–400/yr Windows) — until then users confirm a first-launch warning |
-| Auto-update | ⏳ | after signing |
-| Mobile capture PWA polish, optional VPS live sync | ⏳ | |
+| Update checks (opt-in, daily, per-OS download link) | ✅ | auto-*install* waits for code signing |
+| Phone quick-capture (paired, least-privilege, offline queue, installable) | ✅ | browser-verified incl. offline → reconnect |
+| Live connections: Tradovate WebSocket + ProjectX SignalR | ✅ code | 🚩 confirmed against scripted servers + packaged app; first live run by an account holder |
+
+## Known gaps (audited 2026-10-11) — buildable without user input
+
+- Journal UI: edit an existing entry, add an addendum ("what I learned later"), view version history, add/remove tags — APIs exist, no screens yet
+- Thesis threads view (thesis → intraday updates → trades → outcome)
+- Economic calendar on sessions
+- Bootstrap confidence intervals on breakdowns; slippage vs. intended price
+- Rich-text (WYSIWYG) editor — current editor is markdown + preview
+
+## Needs the outside world
+
+- First live run of Tradovate / ProjectX connections and AI by someone with accounts/keys
+- First run of the Windows and macOS builds (GitHub Actions on main or a v* tag)
+- Code signing certificates (Apple ~$99/yr; Windows ~$100–400/yr) → then automatic install of updates
 
 ## Deferred / open items
 

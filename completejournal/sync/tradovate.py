@@ -53,10 +53,12 @@ class TradovateClient:
     # -------------------------------------------------------------- auth
     def authenticate(self) -> None:
         r = self._http.post("/auth/accesstokenrequest", json=self._auth_body)
+        if r.status_code in (401, 403):
+            raise PermissionError("Tradovate rejected the credentials")
         r.raise_for_status()
         data = r.json()
         if "errorText" in data and data["errorText"]:
-            raise RuntimeError(f"Tradovate auth failed: {data['errorText']}")
+            raise PermissionError(f"Tradovate auth failed: {data['errorText']}")
         self._token = data["accessToken"]
         self.user_id = data.get("userId")
 

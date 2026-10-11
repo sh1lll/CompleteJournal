@@ -49,6 +49,36 @@ completejournal serve --db journal.db
 | AI | Written daily summaries and "Ask your journal" (Claude). Everything works without it. | included in downloaded apps; from source: `pip install ".[ai]"`, then add your key in **Settings** |
 | desktop | Native window when running from source | `pip install ".[desktop]"` |
 
+## Live connection (optional)
+
+Settings → **Live connection**. Fills appear within about a second.
+
+- **TopstepX / ProjectX:** username, API key (subscribe to the ProjectX API in
+  your TopstepX dashboard) and the account ID.
+- **Tradovate:** username, password and an API key (cid + secret) created in
+  your Tradovate account settings (API access is a paid add-on).
+
+Read-only: the app has no ability to place, change or cancel orders. If the
+connection drops it reconnects and catches up, so fills are never lost.
+Credentials are stored in your system keychain or a private file only you can
+read. Importing export files keeps working for every platform.
+
+## Phone quick-capture
+
+Settings → **Phone quick-capture** → *Turn on*, then scan the QR code with
+your phone (same Wi-Fi) and choose "Add to Home Screen". The phone can only
+add notes and photos — it can't read your journal. Notes typed without signal
+are kept on the phone and sent automatically later. *Unpair all phones*
+disconnects every paired phone at once. On public Wi-Fi, use a private network
+such as Tailscale rather than turning this on.
+
+## Updates
+
+The app asks once whether to check for new versions. If you agree, it checks
+GitHub at most once a day (only the public version number is requested) and
+shows a download link when a newer version exists. Your journal is kept when
+you install a new version.
+
 ## Backups
 
 See [BACKUP.md](BACKUP.md). Copying the data folder is a complete backup.

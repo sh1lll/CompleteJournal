@@ -94,6 +94,7 @@ a{color:var(--accent-ink)}
     <button data-v="settings">Settings</button>
   </nav>
 </header>
+<div id="upd-banner" hidden style="background:var(--card);border-bottom:1px solid var(--rule);padding:.6rem 16px;font-size:.9rem"></div>
 <main>
 
 <section id="v-write">
@@ -154,6 +155,35 @@ a{color:var(--accent-ink)}
 
 <section id="v-settings" hidden>
   <h2>Settings</h2>
+
+  <h3>Live connection (optional)</h3>
+  <p class="note">Fills appear here within about a second of happening. Read-only: Complete Journal can never place, change or cancel orders. Importing files keeps working for every platform. Credentials are kept in your system keychain (or a private file only you can read), never in the journal.</p>
+  <div id="live-status" class="note"></div>
+  <div class="row">
+    <select id="lv-platform"><option value="projectx">TopstepX / ProjectX</option><option value="tradovate">Tradovate</option></select>
+    <input id="lv-label" placeholder="Account name in your journal (optional)">
+  </div>
+  <div class="row" id="lv-fields-projectx">
+    <input id="lv-px-user" placeholder="ProjectX username" autocomplete="off">
+    <input id="lv-px-key" type="password" placeholder="ProjectX API key" autocomplete="off">
+    <input id="lv-px-acct" placeholder="Account ID (number)" inputmode="numeric">
+  </div>
+  <div class="row" id="lv-fields-tradovate" hidden>
+    <input id="lv-tv-user" placeholder="Tradovate username" autocomplete="off">
+    <input id="lv-tv-pass" type="password" placeholder="Password" autocomplete="off">
+    <input id="lv-tv-cid" placeholder="API key ID (cid)" autocomplete="off">
+    <input id="lv-tv-sec" type="password" placeholder="API secret (sec)" autocomplete="off">
+    <label class="note" style="flex:0 0 auto;align-self:center"><input type="checkbox" id="lv-tv-demo" style="width:auto"> demo</label>
+  </div>
+  <div class="row"><button class="primary" id="lv-connect">Connect</button><button class="ghost" id="lv-disconnect">Disconnect</button><button class="ghost" id="lv-forget">Forget credentials</button></div>
+
+  <h3>Phone quick-capture</h3>
+  <p class="note">Jot notes and snap photos from your phone during the session; they land here as intraday entries. Works on your home Wi-Fi. A paired phone can only add notes — it can't read your journal. Notes typed without signal are kept on the phone and sent later.</p>
+  <div id="phone-box"></div>
+
+  <h3>Updates</h3>
+  <div id="upd-box" class="note"></div>
+
   <h3>AI (optional)</h3>
   <p class="note">Complete Journal works fully without AI. "Seen this before?" and the daily recap run on this computer. If you add an Anthropic API key, you also get written AI summaries and "Ask your journal". AI text is always kept separate from your own writing and cites its sources.</p>
   <div id="ai-status" class="note"></div>
@@ -271,7 +301,7 @@ document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>{
   if(v==='trades') loadTrades();
   if(v==='analytics') loadAnalytics();
   if(v==='calendar') loadCalendar();
-  if(v==='settings') loadSettings();
+  if(v==='settings') { loadSettings(); loadLive(); loadPhone(); loadUpdates(); }
   if(v==='reports' && !$('#r-out').innerHTML) buildReport();
 });
 
@@ -672,6 +702,81 @@ $('#ai-ask').onclick = async () => {
   try{ $('#ai-answer').innerHTML = aiCard(await api('/api/ai/ask', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({question:q})})); }
   catch(e){ $('#ai-answer').innerHTML = `<p class="warn">${esc(e.message)}</p>`; }
 };
+
+// live connection
+function lvToggle(){ const p = $('#lv-platform').value;
+  $('#lv-fields-projectx').hidden = p !== 'projectx'; $('#lv-fields-tradovate').hidden = p !== 'tradovate'; }
+$('#lv-platform').addEventListener('change', lvToggle);
+async function loadLive(){
+  const st = await api('/api/live/status');
+  const rows = Object.values(st.connections).map(c => {
+    const label = {live:'● live', connecting:'connecting…', reconnecting:'reconnecting…', stopped:'stopped', error:'error'}[c.state] || c.state;
+    return `<div><strong>${esc(c.platform)}</strong>: ${esc(label)} · ${c.fills_added} new fill(s) synced`
+      + (c.last_event_at?` · last fill event ${esc(c.last_event_at)}`:'')
+      + (c.reconnects?` · ${c.reconnects} reconnect(s)`:'')
+      + (c.last_error?`<div class="warn">${esc(c.last_error)}</div>`:'') + '</div>';
+  });
+  const saved = Object.entries(st.saved).filter(([,v])=>v).map(([k])=>k);
+  $('#live-status').innerHTML = (rows.join('') || 'Not connected.') + (saved.length?`<div>Remembered: ${saved.map(esc).join(', ')} (reconnects when the app starts)</div>`:'');
+}
+$('#lv-connect').onclick = async () => {
+  const p = $('#lv-platform').value;
+  const creds = p === 'projectx'
+    ? {username: $('#lv-px-user').value, api_key: $('#lv-px-key').value, account_id: $('#lv-px-acct').value}
+    : {username: $('#lv-tv-user').value, password: $('#lv-tv-pass').value, cid: $('#lv-tv-cid').value, sec: $('#lv-tv-sec').value, demo: $('#lv-tv-demo').checked};
+  if($('#lv-label').value.trim()) creds.account_label = $('#lv-label').value.trim();
+  try { await api('/api/live/connect', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({platform:p, credentials:creds, remember:true})});
+        document.querySelectorAll('#lv-fields-projectx input, #lv-fields-tradovate input').forEach(i=>{ if(i.type!=='checkbox') i.value=''; });
+        setTimeout(loadLive, 800); }
+  catch(e){ $('#live-status').innerHTML = `<div class="warn">${esc(e.message)}</div>`; }
+};
+$('#lv-disconnect').onclick = async () => { await api('/api/live/disconnect', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({platform:$('#lv-platform').value})}); loadLive(); };
+$('#lv-forget').onclick = async () => { await api('/api/live/forget', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({platform:$('#lv-platform').value})}); loadLive(); };
+
+// phone
+async function loadPhone(){
+  const st = await api('/api/phone/status');
+  if(!st.enabled){
+    $('#phone-box').innerHTML = `<div class="row"><button class="primary" id="ph-on">Turn on phone capture</button></div>`;
+    $('#ph-on').onclick = async () => {
+      try{ await api('/api/phone/enable', {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'}); loadPhone(); }
+      catch(e){ $('#phone-box').insertAdjacentHTML('beforeend', `<p class="warn">Could not turn on: ${esc(e.message)}</p>`); }
+    };
+    return;
+  }
+  $('#phone-box').innerHTML = `
+    <div class="split"><div>
+      <p>Scan with your phone's camera (same Wi-Fi), then use “Add to Home Screen” for a one-tap icon.</p>
+      <p class="note">Or open: <code style="word-break:break-all">${esc(st.pair_url)}</code></p>
+      <p class="note">${st.listening ? '● Listening on your network' : '<span class="warn">Not listening — try turning it off and on.</span>'} · port ${st.port}</p>
+      <div class="row"><button class="ghost" id="ph-unpair">Unpair all phones</button><button class="ghost" id="ph-off">Turn off</button></div>
+    </div><div style="max-width:220px;background:#fff;padding:8px;border-radius:8px">${st.qr_svg || ''}</div></div>`;
+  $('#ph-unpair').onclick = async () => { await api('/api/phone/unpair-all', {method:'POST'}); loadPhone(); };
+  $('#ph-off').onclick = async () => { await api('/api/phone/disable', {method:'POST'}); loadPhone(); };
+}
+
+// updates
+async function updatePref(on){ await api('/api/updates/preference', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({enabled:on})}); loadUpdates(); }
+async function loadUpdates(){
+  let u; try { u = await api('/api/updates'); } catch(e){ return; }
+  const ban = $('#upd-banner');
+  if(u.preference === 'ask'){
+    ban.hidden = false;
+    ban.innerHTML = `Check for new versions of Complete Journal once a day? It only asks GitHub for the latest version number — nothing about you or your journal is sent. <button class="ghost" id="ub-yes">Yes</button> <button class="ghost" id="ub-no">No thanks</button>`;
+    $('#ub-yes').onclick = () => updatePref(true); $('#ub-no').onclick = () => updatePref(false);
+  } else if(u.update_available){
+    ban.hidden = false;
+    ban.innerHTML = `Version ${esc(u.latest)} is available (you have ${esc(u.current)}). <a href="${esc(u.download_url)}" target="_blank" rel="noopener">Download</a> · your journal is kept when you install it.`;
+  } else ban.hidden = true;
+  $('#upd-box').innerHTML = `You have version ${esc(u.current)}. Update checks are <strong>${u.preference==='on'?'on':'off'}</strong>. `
+    + (u.preference==='on' ? `<button class="ghost" id="up-now">Check now</button> <button class="ghost" id="up-off">Turn off</button>` : `<button class="ghost" id="up-on">Turn on</button>`)
+    + (u.error?`<div class="warn">${esc(u.error)}</div>`:'') + (u.note?` <span>${esc(u.note)}.</span>`:'')
+    + (u.latest && !u.update_available ? ' You are up to date.' : '');
+  $('#up-now') && ($('#up-now').onclick = async () => { await api('/api/updates/check', {method:'POST'}); loadUpdates(); });
+  $('#up-off') && ($('#up-off').onclick = () => updatePref(false));
+  $('#up-on') && ($('#up-on').onclick = () => updatePref(true));
+}
+loadUpdates();
 
 // demo data
 $('#d-add').onclick = async () => {

@@ -192,3 +192,21 @@ def test_live_api_validates_and_reports(tmp_path, monkeypatch):
     assert r.status_code == 400
     st = c.get("/api/live/status").json()
     assert st["connections"] == {} and "Read-only" in st["note"]
+
+
+def test_rejected_login_stops_instead_of_retrying_forever(tmp_path):
+    import httpx
+    from completejournal import live_setup
+
+    def rest(request):
+        return httpx.Response(200, json={"success": False, "errorCode": 3, "errorMessage": "Invalid credentials"})
+
+    creds = live_setup.validate("projectx", {"username": "u", "api_key": "wrong", "account_id": "1"})
+    proto, sweep = live_setup.build("projectx", creds, tmp_path / "j.db", transport=httpx.MockTransport(rest))
+
+    async def connect(url):
+        raise AssertionError("must not open a socket without a valid login")
+
+    status, sweeps = asyncio.run(_run(proto, [], until=lambda s, sw: s.state == "error"))
+    assert status.state == "error" and "auth failed" in status.last_error
+    assert status.reconnects == 0 and sweeps == []

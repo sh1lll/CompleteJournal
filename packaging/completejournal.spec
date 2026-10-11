@@ -21,6 +21,8 @@ hidden = (collect_submodules("completejournal")
           + ["tzdata"] * (sys.platform == "win32"))
 # Optional components are bundled when present on the build machine.
 # AI ships switched off: it does nothing until the user saves a key.
+# imported lazily inside functions: name them so the bundle can't miss them
+hidden += ["qrcode", "qrcode.image.svg", "websockets.asyncio.client"]
 for optional in ("webview", "anthropic", "keyring"):
     try:
         __import__(optional)
