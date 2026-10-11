@@ -16,7 +16,7 @@ internet (API sync with your platform, price bars, or AI).
 
 Builds for Windows, macOS and Linux are produced by the **Desktop apps**
 GitHub workflow (`.github/workflows/desktop.yml`) and attached to each GitHub
-Release (push a tag like `v0.2.0`, or run the workflow manually from the
+Release (push a tag like `v1.0.0`, or run the workflow manually from the
 Actions tab).
 
 - **Windows:** unzip `CompleteJournal-windows.zip`, run `CompleteJournal.exe`.
