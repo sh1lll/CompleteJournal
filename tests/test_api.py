@@ -84,3 +84,18 @@ def test_bad_import_format(client):
     r = client.post("/api/import", files={"file": ("x.csv", b"a,b\n1,2", "text/csv")},
                     data={"format": "nope", "account": "A"})
     assert r.status_code == 400
+
+
+def test_grade_via_api(client):
+    from pathlib import Path
+    with open(Path(__file__).parent / "fixtures" / "tradovate_orders.csv", "rb") as f:
+        client.post("/api/import", files={"file": ("t.csv", f, "text/csv")},
+                    data={"format": "tradovate", "account": "A", "tz_offset_minutes": "-300"})
+    tid = client.get("/api/trades").json()[0]["id"]
+    r = client.post(f"/api/trades/{tid}/grade", json={"grade": "A", "note": "clean"})
+    assert r.status_code == 200, r.text
+    assert client.get(f"/api/trades/{tid}").json()["grade"]["grade"] == "A"
+    assert client.post(f"/api/trades/{tid}/grade", json={"grade": "E"}).status_code == 400
+    pvo = client.get("/api/stats/process-vs-outcome").json()
+    assert pvo["good_process_won"]["n"] == 1
+    assert client.get("/api/behavior").status_code == 200

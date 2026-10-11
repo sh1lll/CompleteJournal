@@ -13,7 +13,7 @@ from pydantic import BaseModel
 
 from fastapi.responses import Response
 
-from . import analytics, attachments as attmod, bars as barsmod, db as dbmod, journal, reconstruction
+from . import analytics, attachments as attmod, bars as barsmod, behavior, db as dbmod, journal, reconstruction
 from .importers import base as impbase
 from .importers.platforms import REGISTRY
 
@@ -37,6 +37,11 @@ class LinkIn(BaseModel):
 
 class AddendumIn(BaseModel):
     body_md: str
+
+
+class GradeIn(BaseModel):
+    grade: str
+    note: str | None = None
 
 
 def create_app(db_path: str | Path, attachments_root: str | Path | None = None) -> FastAPI:
@@ -237,7 +242,8 @@ def create_app(db_path: str | Path, attachments_root: str | Path | None = None) 
                    ORDER BY e.ts_utc""", (trade_id,)).fetchall()
             notes = journal.entries_for_target(c, "trade", str(trade_id))
             return {"trade": dict(row), "executions": [dict(f) for f in fills],
-                    "entries": [dict(n) for n in notes]}
+                    "entries": [dict(n) for n in notes],
+                    "grade": analytics.get_grade(c, trade_id)}
         finally:
             c.close()
 
@@ -256,6 +262,35 @@ def create_app(db_path: str | Path, attachments_root: str | Path | None = None) 
             return analytics.breakdown(c, dimension)
         except ValueError as e:
             raise HTTPException(400, str(e))
+        finally:
+            c.close()
+
+    @app.get("/api/behavior")
+    def behavior_flags():
+        c = conn()
+        try:
+            return behavior.all_flags(c)
+        finally:
+            c.close()
+
+    @app.get("/api/stats/process-vs-outcome")
+    def pvo():
+        c = conn()
+        try:
+            return analytics.process_vs_outcome(c)
+        finally:
+            c.close()
+
+    @app.post("/api/trades/{trade_id}/grade")
+    def grade_trade(trade_id: int, g: GradeIn):
+        c = conn()
+        try:
+            analytics.set_grade(c, trade_id, g.grade, g.note)
+            return {"ok": True}
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+        except KeyError as e:
+            raise HTTPException(404, str(e))
         finally:
             c.close()
 

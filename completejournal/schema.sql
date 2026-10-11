@@ -172,6 +172,21 @@ CREATE TABLE IF NOT EXISTS ai_artifacts (
     created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
 
+-- -------------------------------------------------------------- trade_grades
+-- Process-vs-outcome grading (trader-assigned decision quality, independent of
+-- P&L). Trades are derived and their ids regenerate on rebuild, so grades key
+-- on a stable fingerprint: account + symbol + entry timestamp + direction.
+CREATE TABLE IF NOT EXISTS trade_grades (
+    account_id INTEGER NOT NULL REFERENCES accounts(id),
+    symbol     TEXT NOT NULL,
+    entry_ts   TEXT NOT NULL,
+    direction  TEXT NOT NULL,
+    grade      TEXT NOT NULL CHECK (grade IN ('A','B','C','D','F')),
+    note       TEXT,
+    graded_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    PRIMARY KEY (account_id, symbol, entry_ts, direction)
+);
+
 -- --------------------------------------------------------------------- bars
 -- Price context (OHLCV) captured around trades: from CSV import or an API
 -- fetcher (e.g. Databento). Charts rendered from here are RECONSTRUCTED price,

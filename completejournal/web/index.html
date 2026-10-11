@@ -146,6 +146,13 @@ a{color:var(--accent-ink)}
   <h2>Analytics</h2>
   <div id="a-stats" class="statgrid"></div>
   <div id="a-notes"></div>
+  <h2>Process vs outcome <span class="note" style="font-weight:400">(grade trades A–F in trade detail; A/B = good decision, D/F = bad)</span></h2>
+  <div id="a-pvo" class="statgrid"></div>
+  <h2>Behavioral flags <span class="note" style="font-weight:400">(review prompts with evidence — not verdicts)</span></h2>
+  <div id="a-flags"></div>
+  <h2>Breakdowns</h2>
+  <div class="row"><select id="a-dim"><option value="symbol">By instrument</option><option value="weekday">By weekday</option><option value="hour">By hour (UTC)</option><option value="account">By account</option></select></div>
+  <div class="tablebox"><table id="a-bd"><thead><tr><th>Bucket</th><th>n</th><th>Win rate</th><th>Expectancy</th><th>Net P&L</th><th></th></tr></thead><tbody></tbody></table></div>
   <h2>Reconciliation (compare to your platform's daily statement)</h2>
   <div class="tablebox"><table id="a-recon"><thead><tr>
     <th>Date</th><th>Account</th><th>Trades</th><th>Fills</th><th>Gross</th><th>Fees</th><th>Net</th><th>Open</th>
@@ -358,13 +365,24 @@ async function loadTrades(){
   document.querySelectorAll('.t-open').forEach(a=>a.onclick=async ev=>{
     ev.preventDefault();
     const d = await api('/api/trades/'+a.dataset.id);
+    const curGrade = d.grade?.grade;
+    const gradeBtns = ['A','B','C','D','F'].map(g =>
+      `<button class="g-btn${curGrade===g?' primary':''}" data-g="${g}" data-tid="${d.trade.id}"
+        style="${curGrade===g?'':'background:transparent;color:var(--fg);border:1px solid var(--rule);'}border-radius:6px;padding:.25rem .7rem;font:inherit;cursor:pointer">${g}</button>`).join(' ');
     $('#t-detail').innerHTML = `<div class="card"><div class="meta"><span>trade #${d.trade.id}</span><span>${esc(d.trade.algorithm_version)}</span></div>
+      <div class="row" style="align-items:center"><span class="note">Decision grade (process, not outcome):</span>${gradeBtns}<span class="note" id="g-msg">${d.grade?`graded ${esc(d.grade.graded_at.slice(0,10))}`:''}</span></div>
       <div class="chartbox"><canvas id="t-chart"></canvas><span class="recon" id="t-chart-label"></span></div>
       <div class="tablebox"><table><thead><tr><th>Time (UTC)</th><th>Side</th><th>Qty</th><th>Price</th><th>Fees</th><th>Source</th></tr></thead><tbody>
       ${d.executions.map(e=>`<tr><td>${esc(e.ts_utc.slice(0,19).replace('T',' '))}</td><td>${esc(e.side)}</td><td>${e.attributed_qty}/${e.qty}</td><td>${e.price}</td><td>${money(e.fees)}</td><td>${esc(e.source)}</td></tr>`).join('')}
       </tbody></table></div>
       ${d.entries.length?d.entries.map(e=>entryCard(e)).join(''):'<p class="note">No journal entries linked to this trade yet.</p>'}</div>`;
     loadTradeChart(d.trade.id);
+    document.querySelectorAll('.g-btn').forEach(b => b.onclick = async () => {
+      await api(`/api/trades/${b.dataset.tid}/grade`, {method:'POST',
+        headers:{'Content-Type':'application/json'}, body: JSON.stringify({grade: b.dataset.g})});
+      $('#g-msg').textContent = `graded ${b.dataset.g}`;
+      a.click();  // refresh detail
+    });
   });
 }
 
@@ -445,10 +463,48 @@ async function loadAnalytics(){
   ];
   $('#a-stats').innerHTML = tiles.map(([l,v])=>`<div class="stat"><div class="v">${v}</div><div class="l">${l}</div></div>`).join('');
   $('#a-notes').innerHTML = (s.notes||[]).map(n=>`<p class="warn">⚠ ${esc(n)}</p>`).join('');
+  // process vs outcome quadrant
+  const pvo = await api('/api/stats/process-vs-outcome');
+  const quad = [
+    ['Good decision, won', pvo.good_process_won], ['Good decision, lost', pvo.good_process_lost],
+    ['Bad decision, won ⚠', pvo.bad_process_won], ['Bad decision, lost', pvo.bad_process_lost],
+  ];
+  $('#a-pvo').innerHTML = quad.map(([l,q])=>`<div class="stat"><div class="v">${q.n}<span class="note" style="font-size:.8rem"> · ${money(q.net_pnl)}</span></div><div class="l">${l}</div></div>`).join('')
+    + `<div class="stat"><div class="v">${pvo.ungraded_or_c}</div><div class="l">Ungraded / C</div></div>`;
+
+  // behavioral flags
+  const bh = await api('/api/behavior');
+  const flags = [...bh.revenge_reentries, ...bh.size_escalation, ...bh.overtrading_days];
+  const st = bh.streaks;
+  let fhtml = flags.length
+    ? flags.map(f=>`<div class="card"><div class="meta"><span class="kind">${esc(f.kind)}</span><span>${esc(f.date)}</span></div>${esc(f.detail)}</div>`).join('')
+    : '<p class="note">No behavioral flags in the current data.</p>';
+  if(st.after_k_losses.n || st.after_k_wins.n){
+    fhtml += `<p class="note">After ${st.k}+ losses: expectancy ${money(st.after_k_losses.expectancy)} (n=${st.after_k_losses.n}) · after ${st.k}+ wins: ${money(st.after_k_wins.expectancy)} (n=${st.after_k_wins.n}) · overall: ${money(st.overall.expectancy)} (n=${st.overall.n}). ${esc(st.note)}</p>`;
+  }
+  $('#a-flags').innerHTML = fhtml;
+
+  // breakdowns
+  loadBreakdown();
+
   const rec = await api('/api/reconciliation');
   $('#a-recon tbody').innerHTML = rec.map(r=>`<tr><td>${esc(r.date)}</td><td>${esc(r.account)}</td><td>${r.trades}</td><td>${r.executions}</td><td class="${cls(r.gross_pnl)}">${money(r.gross_pnl)}</td><td>${money(r.fees)}</td><td class="${cls(r.net_pnl)}">${money(r.net_pnl)}</td><td>${r.still_open||0}</td></tr>`).join('')
     || '<tr><td colspan="8" class="note">Nothing to reconcile yet.</td></tr>';
 }
+
+async function loadBreakdown(){
+  const dim = $('#a-dim').value;
+  const data = await api('/api/stats/breakdown/'+dim);
+  const dow = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  $('#a-bd tbody').innerHTML = Object.entries(data).map(([k,v])=>`<tr>
+    <td>${dim==='weekday'?dow[+k]??k:esc(k)}</td><td>${v.n}${v.low_sample?' <span class="warn" title="small sample">⚠</span>':''}</td>
+    <td>${v.win_rate!=null?(100*v.win_rate).toFixed(0)+'%':'—'}</td>
+    <td class="${cls(v.expectancy)}">${money(v.expectancy)}</td>
+    <td class="${cls(v.net_pnl)}">${money(v.net_pnl)}</td>
+    <td class="note">${v.low_sample?'noise-dominated':''}</td></tr>`).join('')
+    || '<tr><td colspan="6" class="note">No closed trades yet.</td></tr>';
+}
+$('#a-dim').addEventListener('change', loadBreakdown);
 
 // import
 $('#i-go').onclick = async () => {

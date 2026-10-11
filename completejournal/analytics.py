@@ -123,6 +123,61 @@ def equity_curve(conn: sqlite3.Connection, account_id: int | None = None) -> lis
     return out
 
 
+def set_grade(conn: sqlite3.Connection, trade_id: int, grade: str, note: str | None = None) -> None:
+    """Grade the DECISION (A–F), not the outcome. Keyed on the trade's stable
+    fingerprint so it survives reconstruction rebuilds."""
+    if grade not in ("A", "B", "C", "D", "F"):
+        raise ValueError("grade must be A, B, C, D or F")
+    t = conn.execute("SELECT * FROM trades WHERE id=?", (trade_id,)).fetchone()
+    if not t:
+        raise KeyError(f"trade {trade_id} not found")
+    conn.execute(
+        """INSERT INTO trade_grades(account_id, symbol, entry_ts, direction, grade, note)
+           VALUES (?,?,?,?,?,?)
+           ON CONFLICT(account_id, symbol, entry_ts, direction)
+           DO UPDATE SET grade=excluded.grade, note=excluded.note,
+                         graded_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')""",
+        (t["account_id"], t["symbol"], t["entry_ts"], t["direction"], grade, note),
+    )
+    conn.commit()
+
+
+def get_grade(conn: sqlite3.Connection, trade_id: int) -> dict | None:
+    row = conn.execute(
+        """SELECT g.grade, g.note, g.graded_at FROM trades t
+           JOIN trade_grades g ON g.account_id=t.account_id AND g.symbol=t.symbol
+                AND g.entry_ts=t.entry_ts AND g.direction=t.direction
+           WHERE t.id=?""", (trade_id,)).fetchone()
+    return dict(row) if row else None
+
+
+def process_vs_outcome(conn: sqlite3.Connection, account_id: int | None = None) -> dict:
+    """The quadrant that matters: good decisions/bad outcomes vs the reverse.
+    Grades A/B count as good process, D/F as bad; C and ungraded are excluded."""
+    where = f"WHERE {_CLOSED}" + (" AND t.account_id=?" if account_id else "")
+    params = (account_id,) if account_id else ()
+    rows = conn.execute(
+        f"""SELECT t.*, g.grade FROM trades t
+            LEFT JOIN trade_grades g ON g.account_id=t.account_id AND g.symbol=t.symbol
+                 AND g.entry_ts=t.entry_ts AND g.direction=t.direction
+            {where} ORDER BY t.entry_ts""", params).fetchall()
+    quad = {"good_process_won": [], "good_process_lost": [],
+            "bad_process_won": [], "bad_process_lost": []}
+    ungraded = 0
+    for r in rows:
+        if r["grade"] in ("A", "B"):
+            quad["good_process_won" if r["net_pnl"] > 0 else "good_process_lost"].append(r)
+        elif r["grade"] in ("D", "F"):
+            quad["bad_process_won" if r["net_pnl"] > 0 else "bad_process_lost"].append(r)
+        else:
+            ungraded += 1
+    out = {k: _compute(v).to_dict() for k, v in quad.items()}
+    out["ungraded_or_c"] = ungraded
+    out["reading"] = ("bad_process_won is the most dangerous quadrant — "
+                      "profit that trains a bad habit")
+    return out
+
+
 def reconciliation(conn: sqlite3.Connection) -> list[dict]:
     """Per account+day: computed net P&L and execution counts, so the trader can
     compare against the platform's own daily statement. Discrepancies are for
