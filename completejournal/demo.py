@@ -78,7 +78,8 @@ def seed(conn: sqlite3.Connection, *, days: int = 10, seed_value: int = 42) -> d
             conn,
             f"Sample pre-market plan for @{date}: watching @MES around the overnight range. "
             f"Bias neutral until the open drive shows its hand; invalidation is a full "
-            f"reversal through the range midpoint.",
+            f"reversal through the range midpoint.\n\nInstruments: MES\nMax trades: 2\n"
+            f"Max contracts: 2\nTrading window: 08:30-11:00\nStop after: 2 losses",
             kind="pre-market", title=f"Plan {date} (demo)", about_date=date)
         journal.tag(conn, eid, "demo")
         entries += 1

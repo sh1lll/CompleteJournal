@@ -47,6 +47,18 @@ mark{background:transparent;color:var(--accent-ink);font-weight:700}
 .stat .v{font-size:1.3rem;font-variant-numeric:tabular-nums}
 .stat .l{font-family:var(--mono);font-size:.62rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
 [hidden]{display:none!important}
+.ghost{background:transparent;color:var(--accent-ink);border:1px solid var(--rule);border-radius:6px;padding:.5rem 1rem;font:inherit;cursor:pointer}
+.ghost-link{align-self:center;color:var(--accent-ink);font-size:.9rem;flex:0 1 auto!important;min-width:0!important}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:1rem;align-items:start}
+.split>*{min-width:0}
+@media (max-width:760px){.split{grid-template-columns:1fr}}
+.rule-ok{color:var(--pos)} .rule-bad{color:var(--neg)}
+.ai-card{border:1px dashed var(--accent);border-radius:8px;padding:.9rem 1.1rem;margin:.7rem 0}
+.ai-card .meta{font-family:var(--mono);font-size:.66rem;color:var(--accent-ink);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.4rem}
+.cite{font-family:var(--mono);font-size:.78em;color:var(--accent-ink)}
+.sim{font-size:.88rem}
+.sim .why{font-family:var(--mono);font-size:.68rem;color:var(--muted)}
+h3{font-size:1rem;margin:1.2rem 0 .4rem}
 .calgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:.8rem}
 .calgrid .dow{font-family:var(--mono);font-size:.6rem;text-transform:uppercase;color:var(--muted);text-align:center;padding:.2rem 0}
 .cal-day{border:1px solid var(--rule);border-radius:6px;min-height:62px;padding:.3rem .4rem;font-size:.72rem;cursor:pointer;background:var(--card)}
@@ -73,11 +85,13 @@ a{color:var(--accent-ink)}
   <nav id="nav">
     <button data-v="write" class="active">Write</button>
     <button data-v="journal">Journal</button>
-    <button data-v="session">Session</button>
+    <button data-v="session">Day review</button>
     <button data-v="calendar">Calendar</button>
     <button data-v="trades">Trades</button>
     <button data-v="analytics">Analytics</button>
+    <button data-v="reports">Reports</button>
     <button data-v="import">Import</button>
+    <button data-v="settings">Settings</button>
   </nav>
 </header>
 <main>
@@ -98,9 +112,12 @@ a{color:var(--accent-ink)}
   <textarea id="w-body" placeholder="Write freely. Markdown welcome. Type @ to link instruments (@MES), sessions (@2026-10-09), trades (@trade:12) or entries — links are created automatically on save."></textarea>
   <div id="w-mention" class="mention-box" hidden></div>
   <div id="w-preview" class="card" hidden></div>
+  <div id="w-sim"></div>
   <div class="row">
     <button class="primary" id="w-save">Save entry</button>
-    <button id="w-toggle" class="primary" style="background:transparent;color:var(--accent-ink);border:1px solid var(--rule)">Preview</button>
+    <button id="w-toggle" class="ghost">Preview</button>
+    <button id="w-template" class="ghost" title="Insert an optional pre-market plan outline">Plan template</button>
+    <button id="w-similar" class="ghost" title="Find past entries like this draft (runs on this computer)">Seen this before?</button>
     <span id="w-msg" class="note"></span>
   </div>
 </section>
@@ -118,9 +135,36 @@ a{color:var(--accent-ink)}
 </section>
 
 <section id="v-session" hidden>
-  <h2>Session timeline</h2>
+  <h2>Day review</h2>
   <div class="row"><input type="date" id="s-date"><button class="primary" id="s-load">Load day</button></div>
   <div id="s-out"></div>
+</section>
+
+<section id="v-reports" hidden>
+  <h2>Weekly &amp; monthly reviews</h2>
+  <p class="note">The period's numbers next to what you wrote. Download as Markdown to keep or annotate.</p>
+  <div class="row">
+    <select id="r-kind"><option value="week">Week</option><option value="month">Month</option></select>
+    <input type="date" id="r-date">
+    <button class="primary" id="r-go">Build report</button>
+    <a id="r-md" class="ghost-link" href="#" target="_blank" rel="noopener">Open as Markdown</a>
+  </div>
+  <div id="r-out"></div>
+</section>
+
+<section id="v-settings" hidden>
+  <h2>Settings</h2>
+  <h3>AI (optional)</h3>
+  <p class="note">Complete Journal works fully without AI. "Seen this before?" and the daily recap run on this computer. If you add an Anthropic API key, you also get written AI summaries and "Ask your journal". AI text is always kept separate from your own writing and cites its sources.</p>
+  <div id="ai-status" class="note"></div>
+  <div class="row"><input id="ai-key" type="password" placeholder="Anthropic API key (sk-ant-…)" autocomplete="off"><button class="primary" id="ai-save">Save key</button><button class="ghost" id="ai-del">Remove key</button></div>
+  <div id="ai-ask-box" hidden>
+    <h3>Ask your journal</h3>
+    <div class="row"><input id="ai-q" placeholder="e.g. When have I chased failed breakouts, and what did I learn?"><button class="primary" id="ai-ask">Ask</button></div>
+    <div id="ai-answer"></div>
+  </div>
+  <h3>Demo data</h3>
+  <p class="note">Sample trades and entries live in a separate "Demo (sample data)" account and can be removed in one click from the Import screen.</p>
 </section>
 
 <section id="v-calendar" hidden>
@@ -227,7 +271,23 @@ document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>{
   if(v==='trades') loadTrades();
   if(v==='analytics') loadAnalytics();
   if(v==='calendar') loadCalendar();
+  if(v==='settings') loadSettings();
+  if(v==='reports' && !$('#r-out').innerHTML) buildReport();
 });
+
+$('#w-template').onclick = async () => {
+  const t = await api('/api/plan/template');
+  const ta = $('#w-body');
+  ta.value = ta.value ? ta.value + '\n\n' + t.template : t.template;
+  if(!$('#w-kind').value) $('#w-kind').value = 'pre-market';
+  ta.focus();
+};
+$('#w-similar').onclick = async () => {
+  const text = $('#w-body').value.trim();
+  if(!text){ $('#w-sim').innerHTML = '<p class="note">Write something first.</p>'; return; }
+  const hits = await api('/api/similar?text='+encodeURIComponent(text));
+  $('#w-sim').innerHTML = '<h3>Seen this before?</h3>' + similarList(hits, 'Nothing similar in your earlier entries.');
+};
 
 // preview toggle
 $('#w-toggle').onclick = () => {
@@ -347,19 +407,68 @@ async function loadJournal(){
 $('#j-q').addEventListener('change', loadJournal);
 $('#j-kind').addEventListener('change', loadJournal);
 
-// session
+// citations like [trade:12] / [entry:5] -> visible, styled references
+const cites = html => html.replace(/\[(trade|entry):(\d+)\]/g, '<span class="cite">[$1 #$2]</span>');
+
+function similarList(hits, emptyMsg){
+  if(!hits.length) return `<p class="note">${emptyMsg}</p>`;
+  return hits.map(h=>`<div class="card sim"><div class="meta"><span>#${h.id}</span>${h.kind?`<span class="kind">${esc(h.kind)}</span>`:''}<span>${esc(h.about_date||h.written_at.slice(0,10))}</span><span>match ${(h.score*100).toFixed(0)}%</span></div>
+    ${h.title?`<strong>${esc(h.title)}</strong> `:''}${esc(h.excerpt)}${h.excerpt.length>=240?'…':''}
+    <div class="why">shared: ${h.why.map(esc).join(' · ')}</div></div>`).join('');
+}
+
+let aiStatus = null;
+async function getAIStatus(){ try{ aiStatus = await api('/api/ai/status'); }catch(e){ aiStatus = {configured:false}; } return aiStatus; }
+
+// day review: plan vs actual, recap, similar past entries, optional AI
 $('#s-load').onclick = async () => {
   const d = $('#s-date').value; if(!d) return;
-  const t = await api('/api/sessions/'+d);
-  let html = '';
-  html += `<h2>${d} — ${t.trades.length} trade(s), ${t.entries.length} entrie(s)</h2>`;
-  if(t.trades.length){
-    html += '<div class="tablebox"><table><thead><tr><th>Entry</th><th>Sym</th><th>Dir</th><th>Net</th></tr></thead><tbody>'+
-      t.trades.map(x=>`<tr><td>${esc(x.entry_ts.slice(11,19))}</td><td>${esc(x.symbol)}</td><td>${esc(x.direction)}</td><td class="${cls(x.net_pnl)}">${money(x.net_pnl)}</td></tr>`).join('')+'</tbody></table></div>';
-  }
-  html += t.entries.map(e=>entryCard(e)).join('') || '<p class="note">No writing for this day.</p>';
-  $('#s-out').innerHTML = html;
+  const [pva, rc, st] = await Promise.all([api('/api/plan/'+d), api('/api/recap/'+d), getAIStatus()]);
+  const planHtml = pva.plan
+    ? `<div class="card"><div class="meta"><span class="kind">pre-market plan</span><span>#${pva.plan.id}</span><span>written ${esc(pva.plan.written_at.slice(0,16).replace('T',' '))}Z</span></div><div class="body">${renderBody(pva.plan.body_md)}</div></div>`
+    : `<p class="note">No pre-market plan for this day. Plans written with the "Plan template" button can be checked automatically.</p>`;
+  const rules = pva.results.length
+    ? `<h3>Rules from your plan: ${pva.kept} kept, ${pva.broken} broken</h3>` + pva.results.map(r=>
+        `<div class="${r.kept?'rule-ok':'rule-bad'}">${r.kept?'✓':'✗'} ${esc(r.rule)} <span class="note">— ${esc(r.detail)}${r.trade_ids.length?` (trades ${r.trade_ids.map(i=>'#'+i).join(', ')})`:''}</span></div>`).join('')
+    : '';
+  const tradesHtml = pva.trades.length
+    ? '<div class="tablebox"><table><thead><tr><th>#</th><th>In (UTC)</th><th>Sym</th><th>Dir</th><th>Qty</th><th>Net</th></tr></thead><tbody>'+
+      pva.trades.map(x=>`<tr><td>${x.id}</td><td>${esc(x.entry_ts.slice(11,16))}</td><td>${esc(x.symbol)}</td><td>${esc(x.direction)}</td><td>${x.qty_max}</td><td class="${cls(x.net_pnl)}">${money(x.net_pnl)}</td></tr>`).join('')+'</tbody></table></div>'
+      + `<p>Day net: <strong class="${cls(pva.net_pnl)}">${money(pva.net_pnl)}</strong></p>`
+    : '<p class="note">No trades this day.</p>';
+  const reflections = pva.reflections.map(e=>entryCard(e)).join('');
+  const recapHtml = `<div class="card"><div class="meta"><span class="kind">recap</span><span>${esc(rc.source)}</span></div>
+      ${rc.lines.map(l=>`<div>${cites(esc(l))}</div>`).join('')}
+      ${rc.questions.length?`<h3>Questions to reflect on</h3><ul>${rc.questions.map(q=>`<li>${cites(esc(q))}</li>`).join('')}</ul>`:''}</div>`;
+  const aiHtml = st.configured
+    ? `<div class="row"><button class="ghost" id="s-ai">Write an AI summary of this day</button><span class="note" id="s-ai-msg"></span></div><div id="s-ai-out"></div>`
+    : `<p class="note">Optional: add an Anthropic API key in Settings for written AI summaries. Everything above works without it.</p>`;
+  $('#s-out').innerHTML = `
+    <div class="split">
+      <div><h3>The plan</h3>${planHtml}${rules}</div>
+      <div><h3>What happened</h3>${tradesHtml}${reflections}</div>
+    </div>
+    <h3>Recap</h3>${recapHtml}${aiHtml}
+    <h3>Seen this before?</h3><div id="s-sim"><p class="note">Looking through past entries…</p></div>`;
+  const anchor = pva.plan ? {entry_id: pva.plan.id} : (pva.reflections[0] ? {entry_id: pva.reflections[0].id} : null);
+  const sim = anchor ? await api('/api/similar?entry_id='+anchor.entry_id) : [];
+  $('#s-sim').innerHTML = similarList(sim, anchor ? 'Nothing similar in earlier entries yet.' : 'Write a plan or reflection for this day to find similar past days.');
+  const btn = $('#s-ai');
+  if(btn) btn.onclick = async () => {
+    $('#s-ai-msg').textContent = 'Writing…'; btn.disabled = true;
+    try{
+      const a = await api('/api/ai/summary/'+d, {method:'POST'});
+      $('#s-ai-out').innerHTML = aiCard(a); $('#s-ai-msg').textContent = '';
+    }catch(e){ $('#s-ai-msg').textContent = e.message; }
+    btn.disabled = false;
+  };
 };
+
+function aiCard(a){
+  return `<div class="ai-card"><div class="meta">AI-generated · ${esc(a.model)} · ${esc(a.created_at.slice(0,16).replace('T',' '))}Z · not part of your journal</div>
+    <div class="body">${cites(renderMarkdown(a.content_md))}</div>
+    ${a.unverified_citations && a.unverified_citations.length ? `<div class="warn">⚠ cited records it was not given (ignore these): ${a.unverified_citations.map(esc).join(', ')}</div>`:''}</div>`;
+}
 
 // trades
 async function loadTrades(){
@@ -386,6 +495,13 @@ async function loadTrades(){
       </tbody></table></div>
       ${d.entries.length?d.entries.map(e=>entryCard(e)).join(''):'<p class="note">No journal entries linked to this trade yet.</p>'}</div>`;
     loadTradeChart(d.trade.id);
+    api('/api/excursions/trade/'+d.trade.id).then(x => {
+      if(x.available === false) return;
+      const box = document.createElement('p'); box.className = 'note';
+      box.textContent = `Went against you ${x.mae_points} pts ($${x.mae_per_contract}/contract) · in your favour ${x.mfe_points} pts ($${x.mfe_per_contract}/contract)` +
+        (x.capture_ratio!=null ? ` · kept ${(100*x.capture_ratio).toFixed(0)}% of the favourable move` : '') + ` · approximate, from ${x.resolution} bars`;
+      $('#t-chart')?.closest('.chartbox')?.after(box);
+    });
     document.querySelectorAll('.g-btn').forEach(b => b.onclick = async () => {
       await api(`/api/trades/${b.dataset.tid}/grade`, {method:'POST',
         headers:{'Content-Type':'application/json'}, body: JSON.stringify({grade: b.dataset.g})});
@@ -514,6 +630,48 @@ async function loadBreakdown(){
     || '<tr><td colspan="6" class="note">No closed trades yet.</td></tr>';
 }
 $('#a-dim').addEventListener('change', loadBreakdown);
+
+// reports
+$('#r-date').value = new Date().toISOString().slice(0,10);
+async function buildReport(){
+  const kind = $('#r-kind').value, d = $('#r-date').value || new Date().toISOString().slice(0,10);
+  $('#r-md').href = `/api/reports/${kind}/${d}?format=md`;
+  const r = await api(`/api/reports/${kind}/${d}`);
+  const s = r.stats;
+  const tiles = [['Closed trades', s.n], ['Net P&L', money(s.net_pnl)], ['Win rate', s.win_rate!=null?(100*s.win_rate).toFixed(0)+'%':'—'],
+    ['Expectancy', money(s.expectancy)], ['Profit factor', s.profit_factor?.toFixed(2) ?? '—'], ['Max drawdown', money(-s.max_drawdown)]];
+  $('#r-out').innerHTML = `<h3>${kind==='week'?'Week':'Month'} of ${esc(r.start)} → ${esc(r.end)}</h3>
+    <div class="statgrid">${tiles.map(([l,v])=>`<div class="stat"><div class="v">${v}</div><div class="l">${l}</div></div>`).join('')}</div>
+    ${s.low_sample?`<p class="warn">⚠ ${s.n} trades — figures are noise-dominated at this sample size.</p>`:''}
+    ${r.days.length?'<h3>Day by day</h3><div class="tablebox"><table><thead><tr><th>Date</th><th>Trades</th><th>Net</th></tr></thead><tbody>'+r.days.map(d=>`<tr><td>${esc(d.date)}</td><td>${d.trades}</td><td class="${cls(d.net_pnl)}">${money(d.net_pnl)}</td></tr>`).join('')+'</tbody></table></div>':''}
+    ${r.plan_adherence.length?'<h3>Plan adherence</h3>'+r.plan_adherence.map(a=>`<div>${esc(a.date)}: <span class="rule-ok">${a.kept} kept</span>, <span class="rule-bad">${a.broken} broken</span>${a.broken_rules.length?` <span class="note">(${a.broken_rules.map(esc).join('; ')})</span>`:''}</div>`).join(''):''}
+    ${r.flags.length?'<h3>Behaviour flags</h3>'+r.flags.map(f=>`<div class="note">${esc(f.date)} · ${esc(f.kind)}: ${esc(f.detail)}</div>`).join(''):''}
+    ${r.excursions.trades_with_bars?`<p class="note">Average share of the favourable move kept (trades with price bars): ${(100*r.excursions.avg_capture).toFixed(0)}% — approximate.</p>`:''}
+    <h3>What you wrote</h3>${r.entries.length?r.entries.map(e=>entryCard({...e, body_md:e.excerpt})).join(''):'<p class="note">No entries in this period.</p>'}`;
+}
+$('#r-go').onclick = buildReport;
+
+// settings
+async function loadSettings(){
+  const st = await getAIStatus();
+  $('#ai-status').innerHTML = st.configured
+    ? `AI is <strong>on</strong> · model ${esc(st.model)}`
+    : (st.sdk_installed ? 'AI is <strong>off</strong> (no key saved).' : 'AI is <strong>off</strong>. To enable it later, install the AI extras (<code>pip install "completejournal[ai]"</code>) and add a key.');
+  $('#ai-ask-box').hidden = !st.configured;
+}
+$('#ai-save').onclick = async () => {
+  const k = $('#ai-key').value.trim(); if(!k) return;
+  try{ const r = await api('/api/ai/key', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({key:k})});
+       $('#ai-key').value=''; $('#ai-status').textContent = `Key saved (${r.stored_in}).`; loadSettings(); }
+  catch(e){ $('#ai-status').textContent = e.message; }
+};
+$('#ai-del').onclick = async () => { await api('/api/ai/key', {method:'DELETE'}); loadSettings(); };
+$('#ai-ask').onclick = async () => {
+  const q = $('#ai-q').value.trim(); if(!q) return;
+  $('#ai-answer').innerHTML = '<p class="note">Searching your journal and writing an answer…</p>';
+  try{ $('#ai-answer').innerHTML = aiCard(await api('/api/ai/ask', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({question:q})})); }
+  catch(e){ $('#ai-answer').innerHTML = `<p class="warn">${esc(e.message)}</p>`; }
+};
 
 // demo data
 $('#d-add').onclick = async () => {

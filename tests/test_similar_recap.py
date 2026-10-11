@@ -66,3 +66,16 @@ def test_recap_empty_day(conn):
     r = recap.daily(conn, "2026-01-02")
     assert r["lines"][0] == "No trades recorded for this session."
     assert "No pre-market plan" in r["lines"][1]
+
+
+def test_why_shows_written_words_not_stems(conn):
+    journal.create_entry(conn, "Too many trades after the losing streak.")
+    hits = similar.find_similar(conn, text="took trades during a losing streak")
+    assert hits and any(w in ("trades", "losing", "streak", "losing streak") for w in hits[0]["why"])
+    assert "trad" not in hits[0]["why"]
+
+
+def test_ordinal_in_plan_detail():
+    from completejournal.plan import _ordinal
+    assert [_ordinal(n) for n in (1, 2, 3, 4, 11, 12, 13, 21, 22)] == \
+        ["1st", "2nd", "3rd", "4th", "11th", "12th", "13th", "21st", "22nd"]

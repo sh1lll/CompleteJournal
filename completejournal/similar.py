@@ -48,6 +48,18 @@ def tokens(text: str) -> Counter:
     return c
 
 
+def surface_forms(text: str) -> dict[str, str]:
+    """Map stemmed terms back to a word the trader actually wrote."""
+    out: dict[str, str] = {}
+    words = [w.strip("'-") for w in re.findall(r"[a-z][a-z'\-]{2,}", (text or "").lower())]
+    for w in words:
+        out.setdefault(_stem(w), w)
+    plain = [w for w in re.findall(r"[a-z]{3,}", (text or "").lower()) if w not in _STOP]
+    for a, b in zip(plain, plain[1:]):
+        out.setdefault(f"{_stem(a)} {_stem(b)}", f"{a} {b}")
+    return out
+
+
 def _corpus(conn: sqlite3.Connection) -> list[tuple[int, Counter, sqlite3.Row]]:
     rows = conn.execute(
         "SELECT e.*, (SELECT GROUP_CONCAT(tag, ' ') FROM tags WHERE entry_id=e.id) AS tagstr "
@@ -74,12 +86,14 @@ def find_similar(conn: sqlite3.Connection, *, text: str | None = None,
     idf = {term: math.log((1 + n) / (1 + c)) + 1.0 for term, c in df.items()}
 
     if entry_id is not None:
-        match = next((t for i, t, _ in corpus if i == entry_id), None)
-        if match is None:
+        found = next(((t, r) for i, t, r in corpus if i == entry_id), None)
+        if found is None:
             raise KeyError(f"entry {entry_id} not found")
-        query = match
+        query = found[0]
+        surface = surface_forms(f"{found[1]['title'] or ''} {found[1]['body_md']}")
     else:
         query = tokens(text or "")
+        surface = surface_forms(text or "")
     if not query:
         return []
 
@@ -104,7 +118,7 @@ def find_similar(conn: sqlite3.Connection, *, text: str | None = None,
             "id": i, "score": round(score, 3), "kind": row["kind"], "title": row["title"],
             "about_date": row["about_date"], "written_at": row["written_at"],
             "excerpt": (row["body_md"] or "")[:240],
-            "why": [s.replace("#", "@").replace("tag:", "tag ") for s in shared],
+            "why": [surface.get(s, s).replace("#", "@").replace("tag:", "tag ") for s in shared],
         })
     results.sort(key=lambda r: -r["score"])
     return results[:limit]

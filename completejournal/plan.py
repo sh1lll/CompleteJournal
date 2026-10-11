@@ -74,6 +74,12 @@ def parse_rules(text: str) -> dict:
     return rules
 
 
+def _ordinal(n: int) -> str:
+    if 10 <= n % 100 <= 20:
+        return f"{n}th"
+    return f"{n}{ {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th') }"
+
+
 def _local_hhmm(ts_utc: str, policy: SessionPolicy) -> str:
     return datetime.fromisoformat(ts_utc.replace("Z", "+00:00")).astimezone(policy.tz).strftime("%H:%M")
 
@@ -126,7 +132,7 @@ def evaluate(rules: dict, trades: list, policy: SessionPolicy) -> list[dict]:
             if t["net_pnl"] < 0:
                 losses += 1
         out.append({"rule": f"Stop after {k} losses", "kept": not after, "trade_ids": after,
-                    "detail": f"{len(after)} trade(s) after the {k}th loss" if after else f"{losses} loss(es) on the day"})
+                    "detail": f"{len(after)} trade(s) after the {_ordinal(k)} loss" if after else f"{losses} loss(es) on the day"})
     return out
 
 
