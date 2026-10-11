@@ -15,23 +15,30 @@ Phase 0 (research & assessment) ✅ · Phase 1 (MVP core) 🔄 — see `ROADMAP.
 
 ## Quick start
 
+Runs on Windows, macOS and Linux (Python 3.11+). Everything stays on your
+computer: one `journal.db` file plus an attachments folder.
+
 ```bash
 pip install -e ".[dev]"
-python -m pytest                      # 32 tests
-
-# import a platform CSV (tradovate | ninjatrader | rithmic)
-python -m completejournal import --db journal.db \
-    --file fills.csv --format tradovate --account "Apex #1" --tz-offset-minutes -300
-
-# write, search, stats, reconcile
-echo "Pre-market: ..." | python -m completejournal write --db journal.db --kind pre-market
-python -m completejournal search --db journal.db --query "breakout"
-python -m completejournal stats --db journal.db
-python -m completejournal reconcile --db journal.db
-
-# web UI (local only)
-python -m completejournal serve --db journal.db --port 8321
+python -m completejournal serve --db journal.db      # open http://127.0.0.1:8321
 ```
+
+In the app: **Import** → choose any export file → done. The platform, number
+format, date order and timezone are detected automatically. Click **Load demo
+data** to explore with sample trades first.
+
+CLI equivalents:
+
+```bash
+python -m completejournal import --db journal.db --file any_export.csv   # auto-detected
+python -m completejournal demo   --db journal.db                         # sample data
+python -m pytest                                                          # 110 tests
+```
+
+Recognized exports: Tradovate (Orders, Position History), TopstepX/ProjectX
+(Orders, Trades), NinjaTrader 8 (Executions, Trades — any locale), Rithmic
+R|Trader (Order History), TradingView (Performance) — plus any other file with
+recognizable fill or round-trip columns.
 
 Any platform not covered by a preset importer can be ingested with the generic
 column-mapping importer (`completejournal.importers.generic`) — that is the

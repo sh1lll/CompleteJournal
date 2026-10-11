@@ -99,3 +99,20 @@ def test_grade_via_api(client):
     pvo = client.get("/api/stats/process-vs-outcome").json()
     assert pvo["good_process_won"]["n"] == 1
     assert client.get("/api/behavior").status_code == 200
+
+
+def test_auto_import_real_file_via_api(client):
+    real = Path(__file__).parent / "fixtures" / "real" / "projectx_orders.csv"
+    with open(real, "rb") as f:
+        r = client.post("/api/import", files={"file": ("orders.csv", f, "text/csv")},
+                        data={"tz": "America/Chicago"})   # no format, no account
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["detected_format"] == "projectx_orders"
+    assert body["accounts"] == ["TSB17847"] and body["trades_total"] == 2
+    assert "auto" in client.get("/api/import/formats").json()
+
+
+def test_unrecognized_file_returns_helpful_400(client):
+    r = client.post("/api/import", files={"file": ("x.csv", b"foo,bar\n1,2\n", "text/csv")})
+    assert r.status_code == 400 and "Columns found" in r.json()["detail"]

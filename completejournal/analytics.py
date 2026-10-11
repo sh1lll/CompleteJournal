@@ -95,7 +95,7 @@ def breakdown(conn: sqlite3.Connection, dimension: str, account_id: int | None =
         "session_date": "session_date",
         "weekday": "strftime('%w', entry_ts)",
         "hour": "substr(entry_ts, 12, 2)",
-        "account": "account_id",
+        "account": "(SELECT name FROM accounts WHERE id = trades.account_id)",
     }.get(dimension)
     if expr is None:
         raise ValueError(f"unknown dimension {dimension!r}")

@@ -77,26 +77,33 @@ def size_escalation_after_loss(conn, account_id=None, *, factor: float = 1.5) ->
 
 
 def overtrading_days(conn, account_id=None, *, factor: float = 2.0, min_baseline_days: int = 5) -> list[Flag]:
-    """Days with trade count >= factor × personal median. Needs a baseline of
-    min_baseline_days sessions first; silent before that (no fake insight)."""
+    """Days with trade count >= factor x that ACCOUNT's own median day.
+    Accounts are never pooled (a busy demo or second firm must not distort
+    another account's baseline). Silent until an account has
+    min_baseline_days sessions (no fake insight)."""
     rows = conn.execute(
-        "SELECT session_date, COUNT(*) n, GROUP_CONCAT(id) ids FROM trades WHERE is_open=0" +
-        (" AND account_id=?" if account_id else "") +
-        " GROUP BY session_date ORDER BY session_date",
+        "SELECT t.account_id, a.name AS account, t.session_date, COUNT(*) n, "
+        "GROUP_CONCAT(t.id) ids FROM trades t JOIN accounts a ON a.id=t.account_id "
+        "WHERE t.is_open=0" + (" AND t.account_id=?" if account_id else "") +
+        " GROUP BY t.account_id, t.session_date ORDER BY t.session_date",
         (account_id,) if account_id else (),
     ).fetchall()
-    if len(rows) < min_baseline_days:
-        return []
-    counts = sorted(r["n"] for r in rows)
-    median = counts[len(counts) // 2]
-    out = []
+    by_acct: dict[int, list] = {}
     for r in rows:
-        if median > 0 and r["n"] >= median * factor:
-            out.append(Flag(
-                "overtrading", r["session_date"],
-                f"{r['n']} trades vs personal median {median}",
-                [int(i) for i in r["ids"].split(",")],
-            ))
+        by_acct.setdefault(r["account_id"], []).append(r)
+    out = []
+    for days in by_acct.values():
+        if len(days) < min_baseline_days:
+            continue
+        counts = sorted(d["n"] for d in days)
+        median = counts[len(counts) // 2]
+        for d in days:
+            if median > 0 and d["n"] >= median * factor:
+                out.append(Flag(
+                    "overtrading", d["session_date"],
+                    f"{d['account']}: {d['n']} trades vs this account's median {median}",
+                    [int(i) for i in d["ids"].split(",")],
+                ))
     return out
 
 

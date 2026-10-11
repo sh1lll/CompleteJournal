@@ -113,3 +113,28 @@ def test_invalid_grade_rejected(conn):
         analytics.set_grade(conn, tid, "E")
     with pytest.raises(KeyError):
         analytics.set_grade(conn, 999, "A")
+
+
+def test_overtrading_never_pools_accounts(conn):
+    # account A: 5 quiet days of 1 trade; account B: one day with 4 trades only.
+    fills_a, fills_b = [], []
+    for d in range(1, 6):
+        _round_trip(fills_a, "MES", 1, 5000, 5001,
+                    f"2026-10-0{d}T13:30:00.000Z", f"2026-10-0{d}T13:40:00.000Z")
+    for i in range(4):
+        _round_trip(fills_b, "MES", 1, 5000, 5001,
+                    f"2026-10-06T1{4+i}:00:00.000Z", f"2026-10-06T1{4+i}:30:00.000Z")
+    a = dbmod.get_or_create_account(conn, "A")
+    b = dbmod.get_or_create_account(conn, "B")
+    ingest(conn, a, "A", "test", "test", fills_a)
+    ingest(conn, b, "B", "test", "test", fills_b)
+    reconstruction.rebuild(conn)
+    # B has no 5-day baseline of its own -> no flag; A is consistent -> no flag
+    assert behavior.overtrading_days(conn) == []
+
+
+def test_breakdown_by_account_uses_names(conn):
+    fills = []
+    _round_trip(fills, "MES", 1, 5000, 5010, "2026-10-09T13:30:00.000Z", "2026-10-09T13:40:00.000Z")
+    _ingest(conn, fills, account="Apex #2")
+    assert list(analytics.breakdown(conn, "account")) == ["Apex #2"]

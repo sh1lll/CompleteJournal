@@ -25,7 +25,7 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="completejournal")
     p.add_argument("command", choices=["init", "import", "rebuild", "stats", "reconcile", "write",
                                        "search", "serve", "export", "sync", "fetch-bars",
-                                       "import-screenshots"])
+                                       "import-screenshots", "demo", "remove-demo"])
     p.add_argument("--out", default="export", help="output directory for export")
     p.add_argument("--platform", choices=["tradovate", "projectx"], help="sync platform")
     p.add_argument("--demo", action="store_true", help="tradovate demo environment")
@@ -38,7 +38,9 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--date", help="force session date for import-screenshots")
     p.add_argument("--db", default="journal.db")
     p.add_argument("--file")
-    p.add_argument("--format", dest="fmt", choices=sorted(REGISTRY))
+    p.add_argument("--format", dest="fmt", default="auto", choices=sorted(REGISTRY),
+                   help="export format; default auto-detects")
+    p.add_argument("--tz", help="IANA timezone of naive timestamps in the file (default: this computer's)")
     p.add_argument("--account")
     p.add_argument("--tz-offset-minutes", type=int, default=0)
     p.add_argument("--kind")
@@ -53,20 +55,16 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "init":
         print(f"initialized {args.db}")
     elif args.command == "import":
-        if not (args.file and args.fmt and args.account):
-            p.error("import requires --file, --format, --account")
-        parser, source = REGISTRY[args.fmt]
-        executions, warnings = parser(args.file, tz_offset_minutes=args.tz_offset_minutes)
-        acct_id = dbmod.get_or_create_account(conn, args.account, platform=args.fmt)
-        res = impbase.ingest(conn, acct_id, args.account, source, args.fmt,
-                             executions, filename=args.file, warnings=warnings)
-        report = reconstruction.rebuild(conn)
-        print(json.dumps({
-            "batch": res.batch_id, "rows": res.rows_total, "new": res.rows_new,
-            "duplicates": res.rows_dup, "warnings": res.warnings,
-            "trades": report.trades_created, "open": report.open_trades,
-            "unknown_instruments": report.unknown_instruments,
-        }, indent=2))
+        if not args.file:
+            p.error("import requires --file (format is auto-detected; --account optional)")
+        from .importers import auto
+        from .importers.platforms import FORCE_FORMAT
+        from datetime import timedelta, timezone
+        tz = args.tz or (timezone(timedelta(minutes=args.tz_offset_minutes))
+                         if args.tz_offset_minutes else None)
+        res = auto.import_file(conn, args.file, account_label=args.account, tz=tz,
+                               force_format=FORCE_FORMAT[args.fmt])
+        print(json.dumps(res, indent=2))
     elif args.command == "rebuild":
         report = reconstruction.rebuild(conn)
         print(json.dumps(report.__dict__, indent=2))
@@ -141,6 +139,12 @@ def main(argv: list[str] | None = None) -> int:
             p.error("import-screenshots requires --dir")
         root = str(args.db) + ".attachments"
         print(json.dumps(screenshots.import_folder(conn, root, args.dir, date=args.date), indent=2))
+    elif args.command == "demo":
+        from . import demo
+        print(json.dumps(demo.seed(conn), indent=2))
+    elif args.command == "remove-demo":
+        from . import demo
+        print(json.dumps(demo.remove_demo(conn), indent=2))
     elif args.command == "serve":
         import uvicorn
         from .api import create_app

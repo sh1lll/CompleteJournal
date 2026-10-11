@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sqlite3
 import tempfile
+from datetime import timedelta, timezone
 from importlib import resources
 from pathlib import Path
 
@@ -15,7 +16,8 @@ from fastapi.responses import Response
 
 from . import analytics, attachments as attmod, bars as barsmod, behavior, db as dbmod, journal, reconstruction
 from .importers import base as impbase
-from .importers.platforms import REGISTRY
+from .importers import auto as impauto
+from .importers.platforms import FORCE_FORMAT, REGISTRY  # noqa: F401
 
 
 class EntryIn(BaseModel):
@@ -359,32 +361,50 @@ def create_app(db_path: str | Path, attachments_root: str | Path | None = None) 
     @app.post("/api/import")
     async def import_csv(
         file: UploadFile,
-        format: str = Form(...),
-        account: str = Form(...),
-        tz_offset_minutes: int = Form(0),
+        format: str = Form("auto"),
+        account: str | None = Form(None),
+        tz: str | None = Form(None),
+        tz_offset_minutes: int | None = Form(None),
     ):
-        if format not in REGISTRY:
-            raise HTTPException(400, f"unknown format; choose one of {sorted(REGISTRY)}")
-        parser, source = REGISTRY[format]
-        with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as tmp:
-            tmp.write(await file.read())
-            tmp_path = tmp.name
+        """Import any platform export. format='auto' detects the platform;
+        tz is an IANA name (the browser sends its own); account is optional —
+        accounts named inside the file are used and never mixed."""
+        if format not in FORCE_FORMAT:
+            raise HTTPException(400, f"unknown format; choose one of {sorted(FORCE_FORMAT)}")
+        tzv = tz or (timezone(timedelta(minutes=tz_offset_minutes))
+                     if tz_offset_minutes is not None else None)
+        data = await file.read()
         c = conn()
         try:
-            executions, warnings = parser(tmp_path, tz_offset_minutes=tz_offset_minutes)
-            acct_id = dbmod.get_or_create_account(c, account, platform=format)
-            res = impbase.ingest(c, acct_id, account, source, format, executions,
-                                 filename=file.filename, warnings=warnings)
-            report = reconstruction.rebuild(c)
-            return {
-                "rows": res.rows_total, "new": res.rows_new, "duplicates": res.rows_dup,
-                "warnings": res.warnings, "trades_total": report.trades_created,
-                "open_trades": report.open_trades,
-                "unknown_instruments": report.unknown_instruments,
-            }
+            return impauto.import_file(c, data, account_label=(account or None),
+                                       tz=tzv, force_format=FORCE_FORMAT[format],
+                                       filename=file.filename)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
         finally:
             c.close()
-            Path(tmp_path).unlink(missing_ok=True)
+
+    @app.post("/api/demo")
+    def demo_seed():
+        from . import demo
+        c = conn()
+        try:
+            return demo.seed(c)
+        finally:
+            c.close()
+
+    @app.delete("/api/demo")
+    def demo_remove():
+        from . import demo
+        c = conn()
+        try:
+            return demo.remove_demo(c)
+        finally:
+            c.close()
+
+    @app.get("/api/import/formats")
+    def import_formats():
+        return sorted(FORCE_FORMAT)
 
     @app.exception_handler(sqlite3.Error)
     def _sql_err(_, exc):

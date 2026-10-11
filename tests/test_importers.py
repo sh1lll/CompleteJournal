@@ -53,10 +53,12 @@ def test_tradovate_orders_csv():
 
 def test_ninjatrader_executions_csv():
     executions, warnings = parse_ninjatrader_executions(FIX / "nt8_executions.csv", tz_offset_minutes=-300)
-    assert warnings == []
+    # "10/9/2026" is genuinely ambiguous and nothing in the file proves the
+    # order — the importer must say so rather than guess silently
+    assert warnings == ["date order not provable from data; assumed month-first"]
     assert len(executions) == 2
     e = executions[0]
-    assert e.symbol == "ES" and e.contract == "ES 12-26"
+    assert e.symbol == "ES" and e.contract == "ESZ26"
     assert e.exec_id == "abc123"
     assert e.fees == 2.09
 

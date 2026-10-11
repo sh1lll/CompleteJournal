@@ -35,6 +35,7 @@ class NormalizedExecution:
     fees: float = 0.0
     order_type: str | None = None
     raw: dict = field(default_factory=dict)
+    account: str | None = None  # account named inside the file, when present
 
     def validate(self) -> None:
         if self.side not in ("buy", "sell"):
@@ -95,6 +96,19 @@ def ingest(
     warnings: list[str] | None = None,
 ) -> ImportResult:
     warnings = list(warnings or [])
+    executions = list(executions)
+    # double-import guard: same account, overlapping time window, different
+    # export source => likely the same fills arriving twice in two shapes
+    if executions:
+        lo = min(e.ts_utc for e in executions)
+        hi = max(e.ts_utc for e in executions)
+        other = conn.execute(
+            "SELECT DISTINCT source FROM executions WHERE account_id=? AND source<>? "
+            "AND ts_utc BETWEEN ? AND ?", (account_id, source, lo, hi)).fetchall()
+        for o in other:
+            warnings.append(
+                f"account already has fills from '{o[0]}' in this time window — if both "
+                f"files describe the same trades they will be double-counted")
     cur = conn.execute(
         "INSERT INTO import_batches(source, filename) VALUES (?,?)", (source, filename)
     )

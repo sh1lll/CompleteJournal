@@ -21,7 +21,9 @@ import sqlite3
 from collections import deque
 from dataclasses import dataclass, field
 
-ALGORITHM_VERSION = "fifo-v1"
+from .sessions import SessionPolicy
+
+ALGORITHM_VERSION = "fifo-v2"  # v2: exchange-session dates (sessions.py)
 
 
 @dataclass
@@ -66,6 +68,7 @@ def rebuild(conn: sqlite3.Connection, account_id: int | None = None) -> RebuildR
         for r in conn.execute("SELECT symbol, point_value FROM instruments")
     }
 
+    policy = SessionPolicy.from_db(conn)
     keys = conn.execute(
         f"SELECT DISTINCT account_id, symbol FROM executions {where}", params
     ).fetchall()
@@ -81,12 +84,13 @@ def rebuild(conn: sqlite3.Connection, account_id: int | None = None) -> RebuildR
             "WHERE account_id=? AND symbol=? ORDER BY ts_utc, id",
             (acct, symbol),
         ).fetchall()
-        _reconstruct_symbol(conn, acct, symbol, pv, fills, report)
+        _reconstruct_symbol(conn, acct, symbol, pv, fills, report, policy)
     conn.commit()
     return report
 
 
-def _reconstruct_symbol(conn, acct: int, symbol: str, pv: float, fills, report: RebuildReport):
+def _reconstruct_symbol(conn, acct: int, symbol: str, pv: float, fills, report: RebuildReport,
+                        policy: SessionPolicy):
     trade: _OpenTrade | None = None
 
     def close_out(tr: _OpenTrade, exit_ts: str | None):
@@ -96,7 +100,7 @@ def _reconstruct_symbol(conn, acct: int, symbol: str, pv: float, fills, report: 
         realized = tr.realized_points * pv
         is_open = 1 if tr.position != 0 else 0
         net = realized - tr.fees
-        session_date = tr.entry_ts[:10]
+        session_date = policy.session_date(tr.entry_ts)
         cur = conn.execute(
             """INSERT INTO trades(account_id, symbol, contract, direction, qty_max,
                entry_ts, exit_ts, avg_entry, avg_exit, realized_pnl, fees, net_pnl,

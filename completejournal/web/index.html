@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Complete Journal</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%276%27 fill=%27%231f6f54%27/%3E%3Cpath d=%27M9 8h11a3 3 0 0 1 3 3v13H12a3 3 0 0 1-3-3z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%272%27/%3E%3Cpath d=%27M13 13h6M13 17h6%27 stroke=%27white%27 stroke-width=%272%27/%3E%3C/svg%3E">
 <style>
 :root{
   --bg:#faf8f4; --fg:#26231d; --muted:#6e675c; --rule:#ddd6c8; --card:#f1ede3;
@@ -160,15 +161,23 @@ a{color:var(--accent-ink)}
 </section>
 
 <section id="v-import" hidden>
-  <h2>Import executions</h2>
-  <p class="note">CSV exports from your platform. Re-importing the same file is safe — duplicates are skipped. Platform parsers are presets; anything else can use the CLI generic importer with a column mapping.</p>
+  <h2>Import trades</h2>
+  <p class="note">Drop in any export from any platform — Tradovate, TopstepX/ProjectX, NinjaTrader, Rithmic R|Trader, TradingView, or anything else with fills or trades in it. The format, delimiter, number style and date order are detected automatically. Re-importing the same file is always safe.</p>
   <div class="row">
-    <select id="i-format"><option>tradovate</option><option>ninjatrader</option><option>rithmic</option></select>
-    <input id="i-account" placeholder="Account label, e.g. Apex #2 (50k eval)">
-    <input id="i-tz" type="number" value="0" title="Minutes offset of the file's timestamps from UTC (e.g. -300 for US/Central DST)">
+    <input type="file" id="i-file" accept=".csv,.txt,.tsv">
   </div>
-  <div class="row"><input type="file" id="i-file" accept=".csv"><button class="primary" id="i-go">Import</button></div>
-  <pre id="i-out" class="note" style="white-space:pre-wrap"></pre>
+  <div class="row">
+    <input id="i-account" placeholder="Account name (optional — taken from the file when it has one)">
+    <input id="i-tz" title="Timezone of the timestamps in the file. Defaults to this computer's timezone.">
+  </div>
+  <details class="note"><summary>Advanced</summary>
+    <div class="row"><select id="i-format"></select></div>
+  </details>
+  <div class="row"><button class="primary" id="i-go">Import</button></div>
+  <div id="i-out"></div>
+  <h2>Try it with sample data</h2>
+  <p class="note">Loads ten days of clearly labelled sample trades, price bars and journal entries into a separate "Demo (sample data)" account. Removing it never touches your real records.</p>
+  <div class="row"><button class="primary" id="d-add">Load demo data</button><button class="primary" id="d-del" style="background:transparent;color:var(--neg);border:1px solid var(--rule)">Remove demo data</button><span id="d-msg" class="note"></span></div>
 </section>
 
 </main>
@@ -506,18 +515,45 @@ async function loadBreakdown(){
 }
 $('#a-dim').addEventListener('change', loadBreakdown);
 
+// demo data
+$('#d-add').onclick = async () => {
+  const r = await api('/api/demo', {method:'POST'});
+  $('#d-msg').textContent = r.seeded ? `Loaded ${r.trades_total} sample trades across ${r.sessions} sessions.` : 'Demo data is already loaded.';
+};
+$('#d-del').onclick = async () => {
+  const r = await api('/api/demo', {method:'DELETE'});
+  $('#d-msg').textContent = `Removed ${r.trades} sample trades and ${r.entries} sample entries.`;
+};
+
 // import
+(async () => {
+  try { $('#i-tz').value = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch(e) {}
+  try {
+    const fmts = await api('/api/import/formats');
+    $('#i-format').innerHTML = fmts.map(f => `<option value="${esc(f)}"${f==='auto'?' selected':''}>${f==='auto'?'Auto-detect (recommended)':esc(f)}</option>`).join('');
+  } catch(e) { $('#i-format').innerHTML = '<option value="auto">Auto-detect</option>'; }
+})();
 $('#i-go').onclick = async () => {
   const f = $('#i-file').files[0];
-  if(!f || !$('#i-account').value.trim()){ $('#i-out').textContent='Choose a file and name the account.'; return; }
+  if(!f){ $('#i-out').innerHTML = '<p class="warn">Choose a file first.</p>'; return; }
   const fd = new FormData();
-  fd.append('file', f); fd.append('format', $('#i-format').value);
-  fd.append('account', $('#i-account').value.trim());
-  fd.append('tz_offset_minutes', $('#i-tz').value || '0');
+  fd.append('file', f);
+  fd.append('format', $('#i-format').value || 'auto');
+  if($('#i-account').value.trim()) fd.append('account', $('#i-account').value.trim());
+  if($('#i-tz').value.trim()) fd.append('tz', $('#i-tz').value.trim());
+  $('#i-out').innerHTML = '<p class="note">Importing…</p>';
   try{
-    const res = await api('/api/import', {method:'POST', body: fd});
-    $('#i-out').textContent = JSON.stringify(res, null, 2);
-  }catch(e){ $('#i-out').textContent = 'Error: '+e.message; }
+    const r = await api('/api/import', {method:'POST', body: fd});
+    const info = r.parse_info || {};
+    $('#i-out').innerHTML = `<div class="card">
+      <div class="meta"><span class="kind">${esc(r.detected_format)}</span><span>${esc(info.timezone||'')}</span>
+        ${info.decimal_comma?'<span>comma decimals</span>':''}${info.dayfirst?'<span>day-first dates</span>':''}</div>
+      <strong>${r.new} new fill(s)</strong>, ${r.duplicates} already imported · ${r.trades_total} trades total in journal
+      <div class="note">Account(s): ${r.accounts.map(esc).join(', ')}</div>
+      ${r.unknown_instruments.length?`<div class="note">Instruments without contract specs (P&amp;L shown in points; correct for stocks): ${r.unknown_instruments.map(esc).join(', ')}</div>`:''}
+      ${r.warnings.map(w=>`<div class="warn">⚠ ${esc(w)}</div>`).join('')}
+    </div>`;
+  }catch(e){ $('#i-out').innerHTML = `<p class="warn">Could not import: ${esc(e.message)}</p>`; }
 };
 
 // default date = today

@@ -25,14 +25,15 @@
 
 - 🚩 **A2**: Phase 1 implementation now underway (user go-ahead given via D1 + "start Phase 1" standing offer accepted in context).
 - 🚩 **A3**: Pricing/policy figures labeled [U] in the assessment must be re-verified before money is spent.
-- 🚩 **A4**: Platform-specific CSV importers are built against *documented* export layouts (synthetic fixtures); they must be validated against real export files from each platform before being trusted. The generic mapping importer is the safe path meanwhile.
+- ✅ **A4 (resolved 2026-10-11, no user input needed)**: importers validated against **real platform export samples** (Tradovate Position History from an Apex account, TopstepX/ProjectX Orders + Trades, NinjaTrader Executions in European locale + Trades, TradingView Performance) sourced from the Apache-2.0 TradeTally test suite (`tests/fixtures/real/`). P&L reproduced to the cent against the platforms' own P/L columns. Real-sample validation exposed and fixed: semicolon delimiters, comma decimals, day-first dates, paired/round-trip export shapes, multi-account files, UTC offsets.
+- **D2 (user, 2026-10-11)**: the builder doesn't personally use these platforms → nothing may depend on the builder supplying files or credentials. Consequences: auto-detecting importer (no format knowledge required), demo data, real-sample validation.
 
-## Phase 1 — MVP: capture + journal core 🔄 (core built 2026-10-11, 50 tests passing)
+## Phase 1 — MVP: capture + journal core 🔄 (core built 2026-10-11, 110 tests passing)
 
 | Item | Status | Notes |
 |---|---|---|
 | Schema: immutable `executions` → derived `trades`, `entries` + versions + addenda, `links`, `tags`, `attachments`, `ai_artifacts`, FTS5 | ✅ | `completejournal/schema.sql` |
-| CSV importers: Tradovate, NinjaTrader 8, Rithmic R Trader + **generic column-mapping importer** (the universal tier per D1) | ✅ | 🚩 A4: validated on synthetic fixtures only — run real platform exports through them |
+| **Auto-detecting importer** (any export, any platform): 3 shapes (fills / paired / round-trip), 8 named formats + generic fills + generic round-trips; delimiter, decimal style, date order (incl. ISO cross-check proof), timezone (default: computer's), multi-account split, double-import warning | ✅ | validated on real exports (A4 resolved) |
 | FIFO reconstruction: flat→flat trades, scale-ins/outs, **reversal splitting**, pro-rata fees, rebuildable (`algorithm_version`) | ✅ | 10 golden-scenario tests incl. reversal fee attribution |
 | Reconciliation report (computed vs platform statement, per account+day) | ✅ | `analytics.reconciliation` |
 | Journal store: versioned immutability, addenda, soft-delete only, AI structurally barred from `entries` | ✅ | provenance invariants tested |
@@ -64,7 +65,7 @@
 | Sync CLI (`sync --platform tradovate\|projectx`, env-var credentials) | ✅ | credentials never stored |
 | Economic calendar, plan pinning UI, Tauri wrap | ⏳ | |
 
-- 🚩 **A5**: Sync adapters are built from official docs + community SDKs with mocked-transport tests. First live run (user credentials required) must confirm: Tradovate fillFee fields, ProjectX side encoding, timestamp formats.
+- **A5 (not a blocker)**: API sync adapters are built from official docs + community SDKs with mocked-transport tests. They get confirmed on the first live run by *any* user who has an account (Tradovate fillFee fields, ProjectX side encoding). Until then, file import covers every platform. Creating platform accounts is something only a person can do (identity/email signup), so it is deliberately not automated.
 
 ## Phase 3 — Analytics depth + behavioral lens (2–3 pw) ⏳
 
