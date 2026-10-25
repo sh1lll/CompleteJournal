@@ -1,0 +1,165 @@
+name: Desktop apps
+
+# Builds the double-click app for Windows, macOS and Linux, launches each one
+# headlessly to prove it starts and serves its UI, and attaches the builds to
+# a GitHub Release when a version tag (v*) is pushed.
+
+on:
+  push:
+    tags: ["v*"]
+    # build + smoke-test on every push to main
+    # (releases are still published only from v* tags)
+    branches: ["main"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            artifact: CompleteJournal-windows
+          - os: macos-latest
+            artifact: CompleteJournal-macos
+          - os: ubuntu-latest
+            artifact: CompleteJournal-linux
+    runs-on: ${{ matrix.os }}
+    env:
+      HAS_WIN_CERT: ${{ secrets.WIN_CERT_PFX != '' }}
+      HAS_MAC_CERT: ${{ secrets.MACOS_CERT_P12 != '' }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install ".[dev,ai]" pyinstaller
+          # native window on Windows (WebView2) and macOS (WebKit); Linux uses app-mode browser
+          if [ "$RUNNER_OS" != "Linux" ]; then pip install pywebview; fi
+
+      - name: Tests
+        env:
+          PYTHONWARNDEFAULTENCODING: "1"
+        run: python -m pytest -q
+
+      - name: Build app
+        run: pyinstaller packaging/completejournal.spec --noconfirm
+
+      # ---- code signing: runs only when the certificates are configured as
+      # repository secrets; otherwise builds stay unsigned (first-launch warning)
+      - name: Sign (Windows)
+        if: runner.os == 'Windows' && env.HAS_WIN_CERT == 'true'
+        env:
+          WIN_CERT_PFX: ${{ secrets.WIN_CERT_PFX }}
+          WIN_CERT_PASSWORD: ${{ secrets.WIN_CERT_PASSWORD }}
+        run: |
+          echo "$WIN_CERT_PFX" | base64 -d > "$RUNNER_TEMP/cert.pfx"
+          SIGNTOOL=$(ls "/c/Program Files (x86)/Windows Kits/10/bin/"*/x64/signtool.exe | sort | tail -1)
+          "$SIGNTOOL" sign //f "$RUNNER_TEMP/cert.pfx" //p "$WIN_CERT_PASSWORD" //fd sha256 \
+            //tr http://timestamp.digicert.com //td sha256 dist/CompleteJournal/CompleteJournal.exe
+          rm -f "$RUNNER_TEMP/cert.pfx"
+
+      - name: Sign and notarize (macOS)
+        if: runner.os == 'macOS' && env.HAS_MAC_CERT == 'true'
+        env:
+          MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+          MACOS_SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: |
+          KC="$RUNNER_TEMP/build.keychain-db"; KPW=$(uuidgen)
+          echo "$MACOS_CERT_P12" | base64 -d > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$KPW" "$KC"
+          security set-keychain-settings -lut 21600 "$KC"
+          security unlock-keychain -p "$KPW" "$KC"
+          security import "$RUNNER_TEMP/cert.p12" -P "$MACOS_CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KC"
+          security list-keychain -d user -s "$KC"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KPW" "$KC"
+          codesign --deep --force --options runtime --timestamp --sign "$MACOS_SIGN_IDENTITY" "dist/Complete Journal.app"
+          ditto -c -k --keepParent "dist/Complete Journal.app" "$RUNNER_TEMP/notarize.zip"
+          xcrun notarytool submit "$RUNNER_TEMP/notarize.zip" --apple-id "$APPLE_ID" \
+            --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD" --wait
+          xcrun stapler staple "dist/Complete Journal.app"
+          rm -f "$RUNNER_TEMP/cert.p12"
+
+      - name: Smoke test the built app
+        run: |
+          BIN=dist/CompleteJournal/CompleteJournal
+          if [ "$RUNNER_OS" = "Windows" ]; then BIN="$BIN.exe"; fi
+          DATA="$RUNNER_TEMP/cjdata"
+          # own output file: a background process holding the step's stdout can hang the step
+          "$BIN" --no-window --data-dir "$DATA" > "$RUNNER_TEMP/app.out" 2>&1 &
+          APP_PID=$!
+          trap 'kill $APP_PID 2>/dev/null || true' EXIT
+          python - "$DATA" <<'PY'
+          import json, re, sys, time, urllib.request, pathlib
+          data = pathlib.Path(sys.argv[1])
+          url, log = None, data / "desktop.log"
+          for _ in range(90):
+              if log.exists():
+                  found = re.findall(r"http://127\.0\.0\.1:\d+", log.read_text())
+                  if found:
+                      url = found[-1]
+                      break
+              time.sleep(1)
+          assert url, "app did not report its URL"
+          health = json.load(urllib.request.urlopen(url + "/api/health"))
+          assert health["ok"], health
+          html = urllib.request.urlopen(url + "/").read().decode()
+          assert "<title>Complete Journal</title>" in html
+          demo = json.load(urllib.request.urlopen(urllib.request.Request(url + "/api/demo", method="POST")))
+          assert demo["trades_total"] > 0, demo
+          print("smoke test passed:", url, health)
+          PY
+
+      - name: Package
+        run: |
+          cd dist
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            7z a "../${{ matrix.artifact }}.zip" CompleteJournal >/dev/null
+          elif [ "$RUNNER_OS" = "macOS" ]; then
+            ditto -c -k --keepParent "Complete Journal.app" "../${{ matrix.artifact }}.zip"
+          else
+            tar czf "../${{ matrix.artifact }}.tar.gz" CompleteJournal
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.artifact }}.*
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Checksums (the app verifies downloads against these)
+        run: |
+          cd artifacts
+          find . -mindepth 2 -type f \( -name "*.zip" -o -name "*.tar.gz" \) -exec mv {} . \;
+          find . -mindepth 1 -type d -empty -delete   # leave only files for sha256sum and the upload
+          sha256sum CompleteJournal-* > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/CompleteJournal-*
+            artifacts/SHA256SUMS.txt
+          generate_release_notes: true

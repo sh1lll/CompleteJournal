@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "completejournal"
+version = "1.0.0"
+description = "Journal-first automated trading journal: universal trade capture, freeform reflection, honest analytics."
+requires-python = ">=3.11"
+dependencies = ["fastapi>=0.110", "uvicorn>=0.29", "python-multipart>=0.0.9", "httpx>=0.27", "websockets>=13", "qrcode>=7.4", "tzdata; sys_platform == \"win32\""]
+
+[project.scripts]
+completejournal = "completejournal.__main__:main"
+completejournal-desktop = "completejournal.desktop:main"
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "httpx>=0.27"]
+ai = ["anthropic>=1.0", "keyring>=24"]
+desktop = ["pywebview>=5"]
+
+[tool.setuptools.packages.find]
+include = ["completejournal*"]
+
+[tool.setuptools.package-data]
+completejournal = ["schema.sql", "web/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# with PYTHONWARNDEFAULTENCODING=1 (set in CI), any file read/write that relies on
+# the OS default encoding fails — Windows' default broke the UI once
+filterwarnings = ["error::EncodingWarning"]

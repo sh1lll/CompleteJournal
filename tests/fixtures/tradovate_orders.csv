@@ -1,0 +1,4 @@
+orderId,Account,B/S,Contract,Product,avgPrice,filledQty,Fill Time,Status,Type
+100001,DEMO123,Buy,MESZ6,MES,5000.25,2,2026-10-09 09:30:05,Filled,Limit
+100002,DEMO123,Sell,MESZ6,MES,5005.50,2,2026-10-09 09:45:10,Filled,Market
+100003,DEMO123,Buy,MESZ6,MES,0,0,,Canceled,Limit
